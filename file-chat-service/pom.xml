@@ -6,15 +6,41 @@
     <parent>
         <groupId>com.andrewproject</groupId>
         <artifactId>file-chat-backend</artifactId>
-        <version>{revision}</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>file-chat-service</artifactId>
+
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>file-chat-service-upload</module>
+        <module>file-chat-service-search</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
         <maven.compiler.target>24</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-bom</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

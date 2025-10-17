@@ -3,8 +3,14 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/Gateway/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Gateway/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/file-chat-gateway-openapi/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/file-chat-gateway-openapi/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/file-chat-gateway/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/file-chat-gateway/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/file-chat-service/file-chat-service-search/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/file-chat-service/file-chat-service-search/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/file-chat-service/file-chat-service-upload/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/file-chat-service/file-chat-service-upload/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/file-chat-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/file-chat-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />

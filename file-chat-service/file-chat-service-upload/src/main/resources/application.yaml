@@ -1,0 +1,35 @@
+server:
+  port: 8082
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: file-chat-service-upload
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+  profiles:
+    active: dev
+  elasticsearch:
+    uris: http://localhost:9200
+    username: elastic
+    password: 5pBYiT5VWjcLLMnIVw7F
+  ai:
+    dashscope:
+      api-key: ${API_KEY}
+      base-url: https://dashscope.aliyuncs.com/
+      chat:
+        options:
+          model: qwen-max
+      embedding:
+        options:
+          model: text-embedding-v2
+    vectorstore:
+      elasticsearch:
+        initialize-schema: true
+        index-name: file-chat-index
+        dimensions: 1536
+        similarity: cosine

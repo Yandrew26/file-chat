@@ -1,0 +1,26 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: file-chat-service-search
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/file_chat_db
+    username: root
+    password: Ylz980226*
+  ai:
+    openai:
+      api-key: ${API_KEY}
+      # 阿里通义接入: https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api?spm=a2c4g.11186623.0.i1
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      chat:
+        options:
+          model: qwen-max
+    memory:
+      mysql:
+        jdbc-url: jdbc:mysql://localhost:3306/file_chat_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&allowMultiQueries=true&tinyInt1isBit=false&allowLoadLocalInfile=true&allowLocalInfile=true&allowUrl
+        username: root
+        password: Ylz980226*
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        enabled: true

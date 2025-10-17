@@ -9,7 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>file-chat-gateway</artifactId>
+    <artifactId>file-chat-gateway-openapi</artifactId>
 
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
