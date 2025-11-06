@@ -8,7 +8,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3306/file_chat_db
     username: root
-    password: Ylz980226*
+    password: ${MySQL_PASSWORD}
   ai:
     openai:
       api-key: ${API_KEY}
@@ -18,9 +18,20 @@ spring:
         options:
           model: qwen-max
     memory:
-      mysql:
-        jdbc-url: jdbc:mysql://localhost:3306/file_chat_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&allowMultiQueries=true&tinyInt1isBit=false&allowLoadLocalInfile=true&allowLocalInfile=true&allowUrl
+      self-mysql:
+        jdbc-url: jdbc:mysql://localhost:3306/file_chat_db
         username: root
-        password: Ylz980226*
+        password: ${MySQL_PASSWORD}
         driver-class-name: com.mysql.cj.jdbc.Driver
         enabled: true
+  mybatis-plus:
+    mapper-locations: classpath*:mapper/**/*.xml
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+      cache-enabled: false
+      default-enum-type-handler: com.baomidou.mybatisplus.extension.handlers.EnumTypeHandler
+    global-config:
+      db-config:
+        logic-delete-value: true
+        logic-not-delete-value: false

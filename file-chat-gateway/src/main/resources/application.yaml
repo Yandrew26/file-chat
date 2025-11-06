@@ -1,0 +1,51 @@
+server:
+  port: 8080
+  tomcat:
+    connection-timeout: 30s
+    accept-count: 1000
+    max-connections: 10000
+    max-http-form-post-size: 50MB
+    threads:
+      max: 500
+      min-spare: 50
+    uri-encoding: UTF-8
+
+spring:
+  application:
+    name: file-chat-gateway
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  main:
+    allow-bean-definition-overriding: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: always
+    serialization:
+      indent-output: true
+      write-dates-as-timestamps: false
+    time-zone: Asia/Shanghai
+  output:
+    ansi:
+      enabled: never
+  mvc:
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: file-chat-service-search
+              uri: http://localhost:8081
+              order: 9999
+              predicates:
+                - Path=/system/**
+              filters:
+                - StripPrefix=1
+#            - id: file-chat-service-upload
+#              uri: http://localhost:8082
+#              order: 9998
+#              predicates:
+#                - Path=/system/**
+#              filters:
+#                - StripPrefix=1

@@ -33,3 +33,5 @@ spring:
         index-name: file-chat-index
         dimensions: 1536
         similarity: cosine
+        embedding-field-name: embedding
+        top-k: 5
