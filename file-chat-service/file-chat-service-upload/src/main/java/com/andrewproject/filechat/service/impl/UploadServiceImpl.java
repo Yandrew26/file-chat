@@ -1,5 +1,6 @@
 package com.andrewproject.filechat.service.impl;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.andrewproject.filechat.service.UploadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,6 +8,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.reader.pdf.ParagraphPdfDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreProperties;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,12 @@ public class UploadServiceImpl implements UploadService {
 
     private static final Logger logger = LoggerFactory.getLogger(UploadServiceImpl.class);
 
+    private final VectorStore vectorStore;
+
+    public UploadServiceImpl(VectorStore vectorStore) {
+        this.vectorStore = vectorStore;
+    }
+
     @Override
     public List<Document> pdfUpload(Resource resource) {
         logger.info("start read pdf file");
@@ -25,17 +35,23 @@ public class UploadServiceImpl implements UploadService {
         List<Document> pdfDocument = pagePdfDocumentReader.read();
         logger.info("start token text splitter");
         TokenTextSplitter tokenTextSplitter = TokenTextSplitter.builder()
-                // 每个文本块的目标token数量
-                .withChunkSize(800)
-                // 每个文本块的最小字符数
-                .withMinChunkSizeChars(350)
-                // 丢弃小于此长度的文本块
-                .withMinChunkLengthToEmbed(5)
-                // 文本中生成的最大块数
-                .withMaxNumChunks(10000)
-                // 是否保留分隔符
-                .withKeepSeparator(true)
+                .withChunkSize(1024)
+                .withMinChunkSizeChars(100)
+                .withMinChunkLengthToEmbed(10)
+                .withMaxNumChunks(5000)
+                .withKeepSeparator(false)
                 .build();
         return tokenTextSplitter.split(pdfDocument);
+    }
+
+    @Override
+    public List<String> search(String query) {
+        logger.info("search begin");
+        List<Document> search = vectorStore.similaritySearch(SearchRequest
+                .builder()
+                .query(query)
+                .topK(5)
+                .build());
+        return search.stream().map(Document::getText).toList();
     }
 }

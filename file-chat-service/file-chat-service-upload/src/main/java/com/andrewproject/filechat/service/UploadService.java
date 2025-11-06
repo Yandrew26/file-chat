@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface UploadService {
     List<Document> pdfUpload(Resource resource);
+    List<String> search(String query);
 }

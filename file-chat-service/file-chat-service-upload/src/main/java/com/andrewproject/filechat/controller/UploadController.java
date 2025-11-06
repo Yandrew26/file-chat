@@ -1,36 +1,30 @@
 package com.andrewproject.filechat.controller;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.mapping.*;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
-import co.elastic.clients.elasticsearch.indices.IndexSettings;
+import com.andrewproject.filechat.config.SelfElasticsearchVectorStore;
 import com.andrewproject.filechat.service.UploadService;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-@Controller
+@Slf4j
+@RestController
 @RequestMapping("/upload")
 public class UploadController {
 
-    private static final Logger logger = LoggerFactory.getLogger(UploadController.class);
+    @Value("${spring.ai.vectorstore.elasticsearch.top-k}")
+    private Integer topK;
 
     private static final String textField = "content";
 
@@ -39,36 +33,52 @@ public class UploadController {
     @Resource
     private UploadService uploadService;
 
-    private final VectorStore vectorStore;
+    private final SelfElasticsearchVectorStore selfElasticsearchVectorStore;
 
     private final ElasticsearchClient elasticsearchClient;
 
     private final ElasticsearchVectorStoreProperties options;
 
-    public UploadController(VectorStore vectorStore, ElasticsearchVectorStoreProperties options,
+    public UploadController(SelfElasticsearchVectorStore selfElasticsearchVectorStore, ElasticsearchVectorStoreProperties options,
                             ElasticsearchClient elasticsearchClient) {
-        this.vectorStore = vectorStore;
+        this.selfElasticsearchVectorStore = selfElasticsearchVectorStore;
         this.options = options;
         this.elasticsearchClient = elasticsearchClient;
     }
 
-    @GetMapping("/pdf")
-    public ResponseEntity<String> pdfUpload(@RequestBody byte[] file) {
+    @PostMapping("/pdf")
+    public ResponseEntity<String> pdfUpload(@RequestBody byte[] file,
+                                            @RequestParam("conversationId") String conversationId) {
         ByteArrayResource resource = new ByteArrayResource(file);
         List<Document> pdfDocuments = uploadService.pdfUpload(resource);
         createIndexIfNotExists();
-        vectorStore.add(pdfDocuments);
+        selfElasticsearchVectorStore.addByConversationId(pdfDocuments, conversationId);
         return ResponseEntity.ok("File uploaded and processed successfully.");
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Document>> search(@RequestParam("query") String query) {
-        List<Document> search = vectorStore.similaritySearch(SearchRequest
+    public ResponseEntity<List<Document>> search(@RequestParam("query") String query,
+                                                 @RequestParam("conversationId") String conversationId) {
+        List<Document> search = selfElasticsearchVectorStore.similaritySearch(SearchRequest
                 .builder()
                 .query(query)
-                .topK(3)
+                .topK(topK)
+                .filterExpression("conversation_id == '" + conversationId + "'")
                 .build());
         return ResponseEntity.ok(search);
+    }
+
+    @GetMapping("/search/string")
+    public List<String> searchString(@RequestParam("query") String query,
+                                     @RequestParam("conversationId") String conversationId) {
+        log.info("search begin");
+        List<Document> search = selfElasticsearchVectorStore.similaritySearch(SearchRequest
+                .builder()
+                .query(query)
+                .topK(5)
+                .filterExpression("conversation_id == '" + conversationId + "'")
+                .build());
+        return search.stream().map(Document::getText).toList();
     }
 
     private void createIndexIfNotExists() {
@@ -80,42 +90,58 @@ public class UploadController {
                 throw new IllegalArgumentException("Elastic search index name must be provided");
             }
 
-            boolean exists = elasticsearchClient.indices().exists(idx -> idx.index(indexName)).value();
+            boolean exists = selfElasticsearchVectorStore.indexExists();
             if (exists) {
-                logger.debug("Index {} already exists. Skipping creation.", indexName);
+                log.debug("Index {} already exists. Skipping creation.", indexName);
                 return;
             }
 
-            String similarityAlgo = options.getSimilarity().name();
-            IndexSettings indexSettings = IndexSettings
-                    .of(settings -> settings.numberOfShards(String.valueOf(1)).numberOfReplicas(String.valueOf(1)));
-
-            // Maybe using json directly?
-            Map<String, Property> properties = new HashMap<>();
-            properties.put(vectorField, Property.of(property -> property.denseVector(
-                    DenseVectorProperty.of(dense -> dense.index(true).dims(dimsLength).similarity(DenseVectorSimilarity.valueOf(similarityAlgo))))));
-            properties.put(textField, Property.of(property -> property.text(TextProperty.of(t -> t))));
-
-            Map<String, Property> metadata = new HashMap<>();
-            metadata.put("ref_doc_id", Property.of(property -> property.keyword(KeywordProperty.of(k -> k))));
-
-            properties.put("metadata",
-                    Property.of(property -> property.object(ObjectProperty.of(op -> op.properties(metadata)))));
-
             CreateIndexResponse indexResponse = elasticsearchClient.indices()
-                    .create(createIndexBuilder -> createIndexBuilder.index(indexName)
-                            .settings(indexSettings)
-                            .mappings(TypeMapping.of(mappings -> mappings.properties(properties))));
+                    .create(createIndexBuilder -> createIndexBuilder.index(indexName));
 
             if (!indexResponse.acknowledged()) {
                 throw new RuntimeException("failed to create index");
             }
 
-            logger.info("create elasticsearch index {} successfully", indexName);
+            log.info("create elasticsearch index {} successfully", indexName);
         }
         catch (IOException e) {
-            logger.error("failed to create index", e);
+            log.error("failed to create index", e);
             throw new RuntimeException(e);
         }
     }
+
+//    public void syncEmbeddings() {
+//        try {
+//            String indexName = options.getIndexName();
+//            var response = elasticsearchClient.search(s -> s.index(indexName).size(10_000), Map.class);
+//            if (response.hits() == null) return;
+//
+//            for (Hit<Map> hit : response.hits().hits()) {
+//                Map source = hit.source();
+//                if (source == null) continue;
+//
+//                String content = source.get("content") != null ? source.get("content").toString() : null;
+//                Object embeddingObj = source.get("embedding"); // dense vector as list
+//                String embeddingJson = objectMapper.writeValueAsString(embeddingObj);
+//
+//                String docId = null;
+//                Object metadataObj = source.get("metadata");
+//                if (metadataObj instanceof Map) {
+//                    Object ref = ((Map<?, ?>) metadataObj).get("ref_doc_id");
+//                    if (ref != null) docId = ref.toString();
+//                }
+//
+//                DocumentEmbedding e = new DocumentEmbedding();
+//                e.setDocId(docId != null ? docId : hit.id());
+//                e.setContent(content);
+//                e.setEmbeddingJson(embeddingJson);
+//
+//                repository.save(e);
+//            }
+//        }
+//        catch (IOException ex) {
+//            throw new RuntimeException("Failed to sync embeddings from Elasticsearch", ex);
+//        }
+//    }
 }
