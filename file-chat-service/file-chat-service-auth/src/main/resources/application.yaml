@@ -1,0 +1,22 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: file-chat-service-auth
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/file_chat_db
+    username: root
+    password: ${MySQL_PASSWORD}
+  mybatis-plus:
+    mapper-locations: classpath*:mapper/**/*.xml
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+      cache-enabled: false
+      default-enum-type-handler: com.baomidou.mybatisplus.extension.handlers.EnumTypeHandler
+    global-config:
+      db-config:
+        logic-delete-value: true
+        logic-not-delete-value: false
