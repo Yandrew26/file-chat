@@ -65,7 +65,9 @@ export const PassageCard = forwardRef<HTMLElement, PassageCardProps>(function Pa
   ref,
 ) {
   const [expanded, setExpanded] = useState(false)
-  const long = passage.text.length > 420
+  // PDF text extraction pads words with runs of spaces; collapse them so length reflects what is shown
+  const text = passage.text.replace(/[ \t]+/g, ' ').trim()
+  const long = text.length > 420
   const match = passage.score == null ? null : Math.round(Math.max(0, Math.min(1, passage.score)) * 100)
 
   return (
@@ -107,7 +109,7 @@ export const PassageCard = forwardRef<HTMLElement, PassageCardProps>(function Pa
           long && !expanded && 'line-clamp-6',
         )}
       >
-        {highlight(passage.text, query)}
+        {highlight(text, query)}
       </p>
 
       <footer className="mt-3 flex items-center gap-3">
