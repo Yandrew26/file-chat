@@ -43,11 +43,12 @@ history and chat memory (last 10 messages).
    mysql -uroot -p < sql/schema.sql
    ```
 
-2. Configure Elasticsearch in `file-chat-service/file-chat-service-upload/src/main/resources/application.yaml` and set:
+2. Point `spring.elasticsearch.uris` in `file-chat-service/file-chat-service-upload/src/main/resources/application.yaml` at your cluster and set:
 
    ```sh
    export MySQL_PASSWORD=...   # MySQL root password
    export API_KEY=...          # DashScope API key
+   export ELASTICSEARCH_PASSWORD=...   # ELASTICSEARCH_USERNAME defaults to elastic
    ```
 
 3. Build and start the services (each in its own terminal):
@@ -78,8 +79,8 @@ Paths are relative to the gateway (`http://localhost:8080/system`).
 | GET    | `/user/{userId}`               | Sign-in lookup; 404 if the user does not exist                          |
 | POST   | `/graph/create-chat`           | Multipart `userId`, `file` (PDF). Returns `{conversationId, fileName}`  |
 | POST   | `/graph/documents`             | Multipart `conversationId`, `file`. Adds a PDF to a conversation        |
-| GET    | `/graph/rag/stream`            | `message`, `conversationId`. Streams the answer as server-sent events   |
-| GET    | `/graph/rag`                   | Same, as one JSON response: `{traceId, answer, sources, prompt}`        |
+| POST   | `/graph/rag/stream`            | JSON `{message, conversationId}`. Streams the answer as server-sent events (GET with query params also works for short questions) |
+| POST   | `/graph/rag`                   | Same, as one JSON response: `{traceId, answer, sources, prompt}`         |
 | GET    | `/graph/search`                | `query`, `conversationId`. Semantic search over the conversation's PDFs |
 | GET    | `/history/pages`               | `userId`, `pageNum`, `pageSize`, optional `dateStart`/`dateEnd`         |
 | GET    | `/history/getByConversationId` | All messages in a conversation                                          |
@@ -94,6 +95,8 @@ Paths are relative to the gateway (`http://localhost:8080/system`).
 | `token`   | `{text}`, one per streamed chunk of the answer                  |
 | `done`    | `{traceId}`                                                     |
 | `error`   | `{message}`                                                     |
+
+Questions are limited to 4000 characters. Errors return `{message}`.
 
 Passages are numbered in the prompt and the model cites them as `[1]`, `[2]`, in the same order as `sources`.
 

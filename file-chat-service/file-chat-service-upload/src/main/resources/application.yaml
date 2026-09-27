@@ -15,8 +15,8 @@ spring:
     active: dev
   elasticsearch:
     uris: http://localhost:9200
-    username: elastic
-    password: 5pBYiT5VWjcLLMnIVw7F
+    username: ${ELASTICSEARCH_USERNAME:elastic}
+    password: ${ELASTICSEARCH_PASSWORD}
   ai:
     dashscope:
       api-key: ${API_KEY}

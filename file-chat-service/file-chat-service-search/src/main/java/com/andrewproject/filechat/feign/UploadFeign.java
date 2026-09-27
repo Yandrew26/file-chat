@@ -17,9 +17,16 @@ public interface UploadFeign {
     List<String> searchString(@RequestParam("query") String query,
                               @RequestParam("conversationId") String conversationId);
 
-    @GetMapping("/upload/search/passages")
-    List<PassageDTO> searchPassages(@RequestParam("query") String query,
-                                    @RequestParam("conversationId") String conversationId);
+    // POST so long questions are not limited by URL length
+    @PostMapping("/upload/search/passages")
+    List<PassageDTO> searchPassages(@RequestBody PassageSearchRequest request);
+
+    default List<PassageDTO> searchPassages(String query, String conversationId) {
+        return searchPassages(new PassageSearchRequest(query, conversationId));
+    }
+
+    record PassageSearchRequest(String query, String conversationId) {
+    }
 
     @PostMapping("/upload/pdf")
     ResponseEntity<String> pdfUpload(@RequestBody byte[] file,

@@ -1,8 +1,5 @@
 server:
   port: 8081
-  error:
-    # Return ResponseStatusException reasons (e.g. "Only PDF files are supported") to the web client
-    include-message: always
 
 filechat:
   upload-service-url: http://localhost:8082

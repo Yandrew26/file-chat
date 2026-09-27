@@ -18,7 +18,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -33,6 +38,10 @@ public class UploadController {
     private static final String textField = "content";
 
     private static final String vectorField = "embedding";
+
+    private static final int MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+
+    private static final byte[] PDF_SIGNATURE = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 
     private static final Pattern CONVERSATION_ID_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,128}");
 
@@ -53,9 +62,11 @@ public class UploadController {
     }
 
     @PostMapping("/pdf")
-    public ResponseEntity<String> pdfUpload(@RequestBody byte[] file,
+    public ResponseEntity<String> pdfUpload(HttpServletRequest request,
                                             @RequestParam("conversationId") String conversationId,
-                                            @RequestParam(value = "fileName", required = false) String fileName) {
+                                            @RequestParam(value = "fileName", required = false) String fileName) throws IOException {
+        conversationFilter(conversationId);
+        byte[] file = readPdfBody(request);
         ByteArrayResource resource = new ByteArrayResource(file);
         List<Document> pdfDocuments = uploadService.pdfUpload(resource);
         if (StringUtils.isNotBlank(fileName)) {
@@ -76,6 +87,15 @@ public class UploadController {
                 .filterExpression(conversationFilter(conversationId))
                 .build());
         return ResponseEntity.ok(search);
+    }
+
+    public record PassageSearchRequest(String query, String conversationId, Integer topK) {
+    }
+
+    /** POST variant: long or non-ASCII queries overflow Tomcat's 8 KB request-line limit on GET. */
+    @PostMapping("/search/passages")
+    public List<PassageDTO> searchPassagesPost(@RequestBody PassageSearchRequest request) {
+        return searchPassages(request.query(), request.conversationId(), request.topK());
     }
 
     @GetMapping("/search/passages")
@@ -103,6 +123,27 @@ public class UploadController {
                 .filterExpression(conversationFilter(conversationId))
                 .build());
         return search.stream().map(Document::getText).toList();
+    }
+
+    /**
+     * Reads the raw request body with a size cap (a plain {@code @RequestBody byte[]} has none, and this endpoint is
+     * reachable through the OpenAPI gateway) and checks that it is a PDF.
+     */
+    private static byte[] readPdfBody(HttpServletRequest request) throws IOException {
+        if (request.getContentLengthLong() > MAX_UPLOAD_BYTES) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "The file is larger than 50 MB");
+        }
+        byte[] body;
+        try (InputStream in = request.getInputStream()) {
+            body = in.readNBytes(MAX_UPLOAD_BYTES + 1);
+        }
+        if (body.length > MAX_UPLOAD_BYTES) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "The file is larger than 50 MB");
+        }
+        if (body.length < PDF_SIGNATURE.length || !Arrays.equals(body, 0, PDF_SIGNATURE.length, PDF_SIGNATURE, 0, PDF_SIGNATURE.length)) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "The file is not a PDF");
+        }
+        return body;
     }
 
     /**

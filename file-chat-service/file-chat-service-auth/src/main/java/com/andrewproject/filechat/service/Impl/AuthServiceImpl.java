@@ -37,7 +37,9 @@ public class AuthServiceImpl implements AuthService {
         MessageDigest md5Digest = DigestUtils.getMd5Digest();
         byte[] digest = md5Digest.digest(authVerifyStr.getBytes(StandardCharsets.UTF_8));
         String m5dStr = Hex.encodeHexString(digest);
-        if (!m5dStr.equals(reqAuthVerifyParam.getAuthStr())) {
+        String authStr = reqAuthVerifyParam.getAuthStr() == null ? "" : reqAuthVerifyParam.getAuthStr();
+        // Constant-time comparison so response timing does not reveal how much of a guess was right
+        if (!MessageDigest.isEqual(m5dStr.getBytes(StandardCharsets.UTF_8), authStr.getBytes(StandardCharsets.UTF_8))) {
             return RespAuthVerifyParam.builder().verifyResult(Boolean.FALSE).failMsg("authorization failed").build();
         }
         return RespAuthVerifyParam.builder().verifyResult(Boolean.TRUE).build();

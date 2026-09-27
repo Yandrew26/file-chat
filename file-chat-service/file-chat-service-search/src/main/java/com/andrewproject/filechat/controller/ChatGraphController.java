@@ -3,6 +3,7 @@ package com.andrewproject.filechat.controller;
 import com.alibaba.cloud.ai.graph.*;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.andrewproject.filechat.config.graph.GraphProcess;
+import com.andrewproject.filechat.dto.AskRequest;
 import com.andrewproject.filechat.dto.PassageDTO;
 import com.andrewproject.filechat.dto.SystemUserDTO;
 import com.andrewproject.filechat.feign.UploadFeign;
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -36,6 +38,10 @@ public class ChatGraphController {
     private static final Pattern USER_ID_PATTERN = Pattern.compile("[A-Za-z0-9-]{1,64}");
 
     private static final Pattern CONVERSATION_ID_PATTERN = Pattern.compile("[A-Za-z0-9-]{1,64}_[A-Za-z0-9]{1,64}");
+
+    public static final int MAX_MESSAGE_LENGTH = 4000;
+
+    private static final byte[] PDF_SIGNATURE = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 
     @Resource
     private UploadFeign uploadFeign;
@@ -78,7 +84,16 @@ public class ChatGraphController {
         if (!StringUtils.hasText(query)) {
             return ResponseEntity.ok(List.of());
         }
+        if (query.length() > MAX_MESSAGE_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "query is too long");
+        }
         return ResponseEntity.ok(uploadFeign.searchPassages(query, conversationId));
+    }
+
+    /** Preferred over GET: long or non-ASCII questions overflow the gateway's 4 KB request-line limit. */
+    @PostMapping(value = "/rag", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> chatRagPost(@RequestBody AskRequest request) {
+        return chatRag(request.message(), request.conversationId());
     }
 
     @GetMapping("/rag")
@@ -86,6 +101,7 @@ public class ChatGraphController {
                                                        @RequestParam("conversationId") String conversationId) {
         log.info("start chat");
 
+        validateQuestion(message, conversationId);
         String traceId = newTraceId();
         List<PassageDTO> passages = uploadFeign.searchPassages(message, conversationId);
         Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, passages);
@@ -105,11 +121,17 @@ public class ChatGraphController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping(value = "/rag/stream", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatRagStreamPost(@RequestBody AskRequest request) {
+        return chatRagStream(request.message(), request.conversationId());
+    }
+
     @GetMapping(value = "/rag/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatRagStream(@RequestParam("message") String message,
                                                        @RequestParam("conversationId") String conversationId) {
         log.info("start chat stream");
 
+        validateQuestion(message, conversationId);
         String traceId = newTraceId();
         List<PassageDTO> passages = uploadFeign.searchPassages(message, conversationId);
         Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, passages);
@@ -120,11 +142,17 @@ public class ChatGraphController {
                 .doOnError(e -> log.info("Error occurred during streaming", e));
     }
 
-    private Map<String, Object> setupGraph(String message, String conversationId, String traceId, List<PassageDTO> passages) {
+    private static void validateQuestion(String message, String conversationId) {
         validateConversationId(conversationId);
         if (!StringUtils.hasText(message)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message must not be empty");
         }
+        if (message.length() > MAX_MESSAGE_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message must be at most " + MAX_MESSAGE_LENGTH + " characters");
+        }
+    }
+
+    private Map<String, Object> setupGraph(String message, String conversationId, String traceId, List<PassageDTO> passages) {
         String userId = conversationId.split("_")[0];
         SystemUserDTO user = systemUserService.getUserByUserId(userId);
         String userName = user == null ? userId : user.getUserName();
@@ -147,7 +175,11 @@ public class ChatGraphController {
         if (!fileName.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Only PDF files are supported");
         }
-        ResponseEntity<String> uploadResponse = uploadFeign.pdfUpload(file.getBytes(), conversationId, fileName);
+        byte[] bytes = file.getBytes();
+        if (bytes.length < PDF_SIGNATURE.length || !Arrays.equals(bytes, 0, PDF_SIGNATURE.length, PDF_SIGNATURE, 0, PDF_SIGNATURE.length)) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "That file is not a valid PDF");
+        }
+        ResponseEntity<String> uploadResponse = uploadFeign.pdfUpload(bytes, conversationId, fileName);
         log.info("conversationId:{} - uploaded {}: {}", conversationId, fileName, uploadResponse.getBody());
         return fileName;
     }
