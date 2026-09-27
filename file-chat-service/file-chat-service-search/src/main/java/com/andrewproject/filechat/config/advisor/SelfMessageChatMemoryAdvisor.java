@@ -2,6 +2,7 @@ package com.andrewproject.filechat.config.advisor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.springframework.ai.chat.client.ChatClientMessageAggregator;
 import org.springframework.ai.chat.client.ChatClientRequest;
@@ -44,7 +45,7 @@ public final class SelfMessageChatMemoryAdvisor implements BaseChatMemoryAdvisor
     }
 
     public ChatClientRequest before(ChatClientRequest chatClientRequest, AdvisorChain advisorChain) {
-        String conversationId = this.getConversationId(chatClientRequest.context(), this.defaultConversationId);
+        String conversationId = this.resolveConversationId(chatClientRequest.context());
         List<Message> memoryMessages = this.chatMemory.get(conversationId);
         List<Message> processedMessages = new ArrayList(memoryMessages);
         processedMessages.addAll(chatClientRequest.prompt().getInstructions());
@@ -60,8 +61,13 @@ public final class SelfMessageChatMemoryAdvisor implements BaseChatMemoryAdvisor
             assistantMessages = chatClientResponse.chatResponse().getResults().stream().map((g) -> g.getOutput()).toList();
         }
         List<Message> messages = new ArrayList<>(assistantMessages);
-        this.chatMemory.add(this.getConversationId(chatClientResponse.context(), this.defaultConversationId), messages);
+        this.chatMemory.add(this.resolveConversationId(chatClientResponse.context()), messages);
         return chatClientResponse;
+    }
+
+    private String resolveConversationId(Map<String, Object> context) {
+        Object conversationId = context.get(ChatMemory.CONVERSATION_ID);
+        return conversationId == null ? this.defaultConversationId : conversationId.toString();
     }
 
 //    public Flux<ChatClientResponse> adviseStream(ChatClientRequest chatClientRequest, StreamAdvisorChain streamAdvisorChain) {

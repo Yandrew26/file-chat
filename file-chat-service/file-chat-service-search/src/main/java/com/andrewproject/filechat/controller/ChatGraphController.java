@@ -1,31 +1,41 @@
 package com.andrewproject.filechat.controller;
 
 import com.alibaba.cloud.ai.graph.*;
-import com.alibaba.cloud.ai.graph.async.AsyncGenerator;
-import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.andrewproject.filechat.config.graph.GraphProcess;
+import com.andrewproject.filechat.dto.PassageDTO;
+import com.andrewproject.filechat.dto.SystemUserDTO;
 import com.andrewproject.filechat.feign.UploadFeign;
+import com.andrewproject.filechat.node.ChatNode;
+import com.andrewproject.filechat.node.MergeNode;
+import com.andrewproject.filechat.node.PromptTemplateNode;
 import com.andrewproject.filechat.service.SystemUserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.io.IOException;
+import java.util.*;
+import java.util.regex.Pattern;
 
 @Slf4j
 @RestController
 @RequestMapping("/graph")
 public class ChatGraphController {
+
+    // conversationId is "<userId>_<sessionId>", so a user id must not contain an underscore
+    private static final Pattern USER_ID_PATTERN = Pattern.compile("[A-Za-z0-9-]{1,64}");
+
+    private static final Pattern CONVERSATION_ID_PATTERN = Pattern.compile("[A-Za-z0-9-]{1,64}_[A-Za-z0-9]{1,64}");
 
     @Resource
     private UploadFeign uploadFeign;
@@ -39,67 +49,116 @@ public class ChatGraphController {
         this.compiledGraph = stateGraph.compile();
     }
 
-    @GetMapping("/create-chat")
-    public ResponseEntity<String> create(@RequestParam("userId") String userId,
-                                         @RequestBody byte[] file) {
-        StringBuilder resultConversationId = new StringBuilder();
+    @PostMapping(value = "/create-chat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> create(@RequestParam("userId") String userId,
+                                                      @RequestParam("file") MultipartFile file) throws IOException {
+        if (!USER_ID_PATTERN.matcher(userId).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid userId");
+        }
         String sessionId = UUID.randomUUID().toString().replaceAll("-", "");
-        String conversationId = resultConversationId.append(userId).append("_").append(sessionId).toString();
+        String conversationId = userId + "_" + sessionId;
 
-        ResponseEntity<String> stringResponseEntity = uploadFeign.pdfUpload(file, conversationId);
-        log.info(stringResponseEntity.toString());
+        String fileName = uploadPdf(file, conversationId);
 
-        return ResponseEntity.ok("chat started successfully at conversation_id: " + conversationId);
+        return ResponseEntity.ok(Map.of("conversationId", conversationId, "fileName", fileName));
+    }
+
+    @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> addDocument(@RequestParam("conversationId") String conversationId,
+                                                           @RequestParam("file") MultipartFile file) throws IOException {
+        validateConversationId(conversationId);
+        String fileName = uploadPdf(file, conversationId);
+        return ResponseEntity.ok(Map.of("conversationId", conversationId, "fileName", fileName));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<PassageDTO>> search(@RequestParam("query") String query,
+                                                   @RequestParam("conversationId") String conversationId) {
+        validateConversationId(conversationId);
+        if (!StringUtils.hasText(query)) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(uploadFeign.searchPassages(query, conversationId));
     }
 
     @GetMapping("/rag")
     public ResponseEntity<Map<String, Object>> chatRag(@RequestParam("message") String message,
-                                                       @RequestParam("conversationId") String conversationId) throws GraphRunnerException {
-            log.info("start chat");
+                                                       @RequestParam("conversationId") String conversationId) {
+        log.info("start chat");
 
-            String userId = conversationId.split("_")[0];
-            String userName = systemUserService.getUserByUserId(userId).getUserName();
-            String traceId = UUID.randomUUID().toString().replaceAll("-", "");
-            List<String> elasticsearchList = uploadFeign.searchString(message, conversationId);
+        String traceId = newTraceId();
+        List<PassageDTO> passages = uploadFeign.searchPassages(message, conversationId);
+        Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, passages);
 
-            Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, userId, userName, elasticsearchList);
+        OverAllState result = compiledGraph.invoke(objectMap)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Graph produced no result"));
 
-            OverAllState result = compiledGraph.invoke(objectMap).get();
+        Object merge = result.value(MergeNode.NODE_CONTENT).orElse(null);
+        Object answer = merge instanceof Map<?, ?> mergeResult ? mergeResult.get("chat_content") : "";
 
-            return ResponseEntity.ok(result.data());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("traceId", traceId);
+        response.put("conversationId", conversationId);
+        response.put("answer", answer);
+        response.put("sources", passages);
+        response.put("prompt", result.value(PromptTemplateNode.NODE_CONTENT).orElse(""));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping(value = "/rag/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatRagStream(@RequestParam("message") String message,
-                                                       @RequestParam("conversationId") String conversationId) throws GraphRunnerException {
+                                                       @RequestParam("conversationId") String conversationId) {
         log.info("start chat stream");
 
-        String userId = conversationId.split("_")[0];
-        String userName = systemUserService.getUserByUserId(userId).getUserName();
-        String traceId = UUID.randomUUID().toString().replaceAll("-", "");
-        List<String> elasticsearchList = uploadFeign.searchString(message, conversationId);
+        String traceId = newTraceId();
+        List<PassageDTO> passages = uploadFeign.searchPassages(message, conversationId);
+        Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, passages);
         RunnableConfig runnableConfig = RunnableConfig.builder().threadId(traceId).build();
 
-        Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, userId, userName, elasticsearchList);
-
-        GraphProcess graphProcess = new GraphProcess(compiledGraph);
-        Sinks.Many<ServerSentEvent<String>> sink = Sinks.many().unicast().onBackpressureBuffer();
-        AsyncGenerator<NodeOutput> resultFuture = compiledGraph.stream(objectMap, runnableConfig);
-        graphProcess.processStream(resultFuture, sink);
-
-        return sink.asFlux()
+        return GraphProcess.toServerSentEvents(compiledGraph.stream(objectMap, runnableConfig), traceId, conversationId, passages)
                 .doOnCancel(() -> log.info("Client disconnected from stream"))
                 .doOnError(e -> log.info("Error occurred during streaming", e));
     }
 
-    private Map<String, Object> setupGraph(String message, String conversationId, String traceId, String userId, String userName, List<String> elasticsearchList) {
+    private Map<String, Object> setupGraph(String message, String conversationId, String traceId, List<PassageDTO> passages) {
+        validateConversationId(conversationId);
+        if (!StringUtils.hasText(message)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message must not be empty");
+        }
+        String userId = conversationId.split("_")[0];
+        SystemUserDTO user = systemUserService.getUserByUserId(userId);
+        String userName = user == null ? userId : user.getUserName();
+
         Map<String, Object> objectMap = new HashMap<>();
         objectMap.put("message", message);
         objectMap.put("conversationId", conversationId);
         objectMap.put("traceId", traceId);
         objectMap.put("userId", userId);
         objectMap.put("userName", userName);
-        objectMap.put("elasticsearch_list", elasticsearchList);
+        objectMap.put("elasticsearch_list", passages.stream().map(PassageDTO::text).toList());
         return objectMap;
+    }
+
+    private String uploadPdf(MultipartFile file, String conversationId) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "file must not be empty");
+        }
+        String fileName = StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "document.pdf";
+        if (!fileName.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Only PDF files are supported");
+        }
+        ResponseEntity<String> uploadResponse = uploadFeign.pdfUpload(file.getBytes(), conversationId, fileName);
+        log.info("conversationId:{} - uploaded {}: {}", conversationId, fileName, uploadResponse.getBody());
+        return fileName;
+    }
+
+    private static void validateConversationId(String conversationId) {
+        if (conversationId == null || !CONVERSATION_ID_PATTERN.matcher(conversationId).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid conversationId");
+        }
+    }
+
+    private static String newTraceId() {
+        return UUID.randomUUID().toString().replaceAll("-", "");
     }
 }

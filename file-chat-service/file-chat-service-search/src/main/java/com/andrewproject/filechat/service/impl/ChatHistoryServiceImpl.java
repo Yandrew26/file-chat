@@ -6,7 +6,7 @@ import com.andrewproject.filechat.dto.PageDTO;
 import com.andrewproject.filechat.entity.ChatHistory;
 import com.andrewproject.filechat.mapper.ChatHistoryMapper;
 import com.andrewproject.filechat.service.ChatHistoryService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.BeanUtils;
@@ -41,7 +41,8 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     @Override
     public PageDTO<ChatHistoryPageDTO> pages(Long pageNum, Long pageSize, String userid, String dateStart, String dateEnd) {
-        List<ChatHistoryPageDTO> resultList = chatHistoryMapper.selectChatHistoryGroupByConversationID(userid,pageNum-1, pageSize, dateStart, dateEnd);
+        List<ChatHistoryPageDTO> resultList = chatHistoryMapper.selectChatHistoryGroupByConversationID(userid,
+                (Math.max(pageNum, 1) - 1) * pageSize, pageSize, dateStart, dateEnd);
         Long count = chatHistoryMapper.selectChatHistoryGroupByConversationIDCount(userid, dateStart, dateEnd);
         return PageDTO.of(resultList, pageNum, pageSize, count, getPages(count, pageSize));
     }

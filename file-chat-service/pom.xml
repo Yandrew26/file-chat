@@ -41,6 +41,14 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Since 1.1, the DashScope and memory starters are published under the extensions BOM -->
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-extensions-bom</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

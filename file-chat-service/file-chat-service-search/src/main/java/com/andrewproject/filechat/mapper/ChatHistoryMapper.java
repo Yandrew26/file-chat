@@ -26,7 +26,7 @@ public interface ChatHistoryMapper extends BaseMapper<ChatHistory> {
             "LIMIT #{limit}\n" +
             "OFFSET #{offset};")
     List<ChatHistoryPageDTO> selectChatHistoryGroupByConversationID(@Param("user_id") String userId,
-                                                                    @Param("offset") Long pageNum,
+                                                                    @Param("offset") Long offset,
                                                                     @Param("limit") Long pageSize,
                                                                     @Param("dateStart") String dateStart,
                                                                     @Param("dateEnd") String dateEnd);

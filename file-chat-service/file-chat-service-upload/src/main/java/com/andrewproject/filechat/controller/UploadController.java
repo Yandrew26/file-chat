@@ -3,6 +3,7 @@ package com.andrewproject.filechat.controller;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
 import com.andrewproject.filechat.config.SelfElasticsearchVectorStore;
+import com.andrewproject.filechat.dto.PassageDTO;
 import com.andrewproject.filechat.service.UploadService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -12,11 +13,14 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Slf4j
 @RestController
@@ -29,6 +33,8 @@ public class UploadController {
     private static final String textField = "content";
 
     private static final String vectorField = "embedding";
+
+    private static final Pattern CONVERSATION_ID_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,128}");
 
     @Resource
     private UploadService uploadService;
@@ -48,9 +54,13 @@ public class UploadController {
 
     @PostMapping("/pdf")
     public ResponseEntity<String> pdfUpload(@RequestBody byte[] file,
-                                            @RequestParam("conversationId") String conversationId) {
+                                            @RequestParam("conversationId") String conversationId,
+                                            @RequestParam(value = "fileName", required = false) String fileName) {
         ByteArrayResource resource = new ByteArrayResource(file);
         List<Document> pdfDocuments = uploadService.pdfUpload(resource);
+        if (StringUtils.isNotBlank(fileName)) {
+            pdfDocuments.forEach(document -> document.getMetadata().put("file_name", fileName));
+        }
         createIndexIfNotExists();
         selfElasticsearchVectorStore.addByConversationId(pdfDocuments, conversationId);
         return ResponseEntity.ok("File uploaded and processed successfully.");
@@ -63,9 +73,23 @@ public class UploadController {
                 .builder()
                 .query(query)
                 .topK(topK)
-                .filterExpression("conversation_id == '" + conversationId + "'")
+                .filterExpression(conversationFilter(conversationId))
                 .build());
         return ResponseEntity.ok(search);
+    }
+
+    @GetMapping("/search/passages")
+    public List<PassageDTO> searchPassages(@RequestParam("query") String query,
+                                           @RequestParam("conversationId") String conversationId,
+                                           @RequestParam(value = "topK", required = false) Integer requestedTopK) {
+        int limit = requestedTopK == null ? topK : Math.min(Math.max(requestedTopK, 1), 20);
+        List<Document> search = selfElasticsearchVectorStore.similaritySearch(SearchRequest
+                .builder()
+                .query(query)
+                .topK(limit)
+                .filterExpression(conversationFilter(conversationId))
+                .build());
+        return search.stream().map(PassageDTO::from).toList();
     }
 
     @GetMapping("/search/string")
@@ -76,9 +100,20 @@ public class UploadController {
                 .builder()
                 .query(query)
                 .topK(5)
-                .filterExpression("conversation_id == '" + conversationId + "'")
+                .filterExpression(conversationFilter(conversationId))
                 .build());
         return search.stream().map(Document::getText).toList();
+    }
+
+    /**
+     * Builds the metadata filter for a conversation. The id is validated first because it is
+     * interpolated into the filter expression.
+     */
+    private static String conversationFilter(String conversationId) {
+        if (conversationId == null || !CONVERSATION_ID_PATTERN.matcher(conversationId).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid conversationId");
+        }
+        return "conversation_id == '" + conversationId + "'";
     }
 
     private void createIndexIfNotExists() {

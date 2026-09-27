@@ -5,7 +5,7 @@ import com.andrewproject.filechat.dto.ChatHistoryPageDTO;
 import com.andrewproject.filechat.dto.PageDTO;
 import com.andrewproject.filechat.entity.ChatHistory;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 
 import java.util.List;
 import java.util.Map;

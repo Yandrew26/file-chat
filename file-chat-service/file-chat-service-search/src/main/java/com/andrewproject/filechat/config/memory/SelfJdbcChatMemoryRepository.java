@@ -113,7 +113,7 @@ public abstract class SelfJdbcChatMemoryRepository implements ChatMemoryReposito
                 case USER -> var10000 = new UserMessage(content);
                 case ASSISTANT -> var10000 = new AssistantMessage(content);
                 case SYSTEM -> var10000 = new SystemMessage(content);
-                case TOOL -> var10000 = new ToolResponseMessage(List.of());
+                case TOOL -> var10000 = ToolResponseMessage.builder().responses(List.of()).build();
                 default -> throw new IncompatibleClassChangeError();
             }
 

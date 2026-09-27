@@ -1,5 +1,6 @@
 package com.andrewproject.filechat.feign;
 
+import com.andrewproject.filechat.dto.PassageDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,14 +10,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(value = "http://localhost:8082")
+@FeignClient(name = "file-chat-service-upload", url = "${filechat.upload-service-url:http://localhost:8082}")
 public interface UploadFeign {
 
     @GetMapping("/upload/search/string")
     List<String> searchString(@RequestParam("query") String query,
                               @RequestParam("conversationId") String conversationId);
 
+    @GetMapping("/upload/search/passages")
+    List<PassageDTO> searchPassages(@RequestParam("query") String query,
+                                    @RequestParam("conversationId") String conversationId);
+
     @PostMapping("/upload/pdf")
     ResponseEntity<String> pdfUpload(@RequestBody byte[] file,
-                                     @RequestParam("conversationId") String conversationId);
+                                     @RequestParam("conversationId") String conversationId,
+                                     @RequestParam("fileName") String fileName);
 }

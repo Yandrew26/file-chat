@@ -34,6 +34,14 @@ spring:
     gateway:
       server:
         webflux:
+          # Lets the web client call the gateway directly when it is not served from the same origin
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origin-patterns: ${FILECHAT_ALLOWED_ORIGINS:http://localhost:5173}
+                allowed-methods: GET, POST, OPTIONS
+                allowed-headers: "*"
+                max-age: 3600
           routes:
             - id: file-chat-service-search
               uri: http://localhost:8081

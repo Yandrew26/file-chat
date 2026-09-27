@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -56,7 +57,8 @@ public class ChatController {
 
         String response = this.chatClientBuilder.build()
                 .prompt(getPrompt(message, conversationId))
-                .advisors(getAdvisors(conversationId, traceId))
+                .advisors(spec -> spec.advisors(getAdvisors(conversationId, traceId))
+                        .param(ChatMemory.CONVERSATION_ID, conversationId))
                 .call()
                 .content();
         return ResponseEntity.ok(response);
@@ -65,9 +67,7 @@ public class ChatController {
     private List<Advisor> getAdvisors(String conversationId, String traceId) {
         List<Advisor> advisors = new ArrayList<>();
 
-        MessageChatMemoryAdvisor messageChatMemoryAdvisor = MessageChatMemoryAdvisor.builder(messageWindowChatMemory)
-                .conversationId(conversationId)
-                .build();
+        MessageChatMemoryAdvisor messageChatMemoryAdvisor = MessageChatMemoryAdvisor.builder(messageWindowChatMemory).build();
         advisors.add(messageChatMemoryAdvisor);
         log.info("traceId:{}, conversationId:{} - Started chat short memory", traceId, conversationId);
 
