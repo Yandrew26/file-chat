@@ -11,6 +11,7 @@ import com.andrewproject.filechat.node.ChatNode;
 import com.andrewproject.filechat.node.MergeNode;
 import com.andrewproject.filechat.node.PromptTemplateNode;
 import com.andrewproject.filechat.service.SystemUserService;
+import feign.FeignException;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -179,7 +180,18 @@ public class ChatGraphController {
         if (bytes.length < PDF_SIGNATURE.length || !Arrays.equals(bytes, 0, PDF_SIGNATURE.length, PDF_SIGNATURE, 0, PDF_SIGNATURE.length)) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "That file is not a valid PDF");
         }
-        ResponseEntity<String> uploadResponse = uploadFeign.pdfUpload(bytes, conversationId, fileName);
+        ResponseEntity<String> uploadResponse;
+        try {
+            uploadResponse = uploadFeign.pdfUpload(bytes, conversationId, fileName);
+        } catch (FeignException e) {
+            if (e.status() == HttpStatus.PAYLOAD_TOO_LARGE.value()) {
+                throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "This PDF is too long to index. Try a shorter document.");
+            }
+            if (e.status() == HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()) {
+                throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "That file is not a valid PDF");
+            }
+            throw e;
+        }
         log.info("conversationId:{} - uploaded {}: {}", conversationId, fileName, uploadResponse.getBody());
         return fileName;
     }

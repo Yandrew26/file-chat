@@ -2,9 +2,22 @@ server:
   port: 8081
 
 filechat:
-  upload-service-url: http://localhost:8082
+  upload-service-url: ${FILECHAT_UPLOAD_SERVICE_URL:http://localhost:8082}
+  # Cost controls: requests that call the model or embeddings are limited per client and per day
+  limits:
+    questions-per-minute: ${FILECHAT_QUESTIONS_PER_MINUTE:10}
+    searches-per-minute: ${FILECHAT_SEARCHES_PER_MINUTE:30}
+    uploads-per-hour: ${FILECHAT_UPLOADS_PER_HOUR:10}
+    questions-per-day: ${FILECHAT_QUESTIONS_PER_DAY:500}
+    searches-per-day: ${FILECHAT_SEARCHES_PER_DAY:2000}
+    uploads-per-day: ${FILECHAT_UPLOADS_PER_DAY:100}
+    # Proxies that append to X-Forwarded-For in front of this service (the gateway, plus any reverse proxy)
+    trusted-proxies: ${FILECHAT_TRUSTED_PROXIES:1}
 
 spring:
+  config:
+    # Secrets come from the environment or a git-ignored .env in the directory you start the service from (see .env.example)
+    import: optional:file:.env[.properties]
   application:
     name: file-chat-service-search
   servlet:
@@ -13,8 +26,8 @@ spring:
       max-request-size: 50MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/file_chat_db
-    username: root
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/file_chat_db}
+    username: ${MYSQL_USERNAME:root}
     password: ${MySQL_PASSWORD}
   ai:
     openai:
@@ -23,11 +36,13 @@ spring:
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:
-          model: qwen-max
+          model: ${FILECHAT_CHAT_MODEL:qwen-max}
+          # Upper bound on each answer's length, which bounds the cost per question
+          max-tokens: ${FILECHAT_MAX_ANSWER_TOKENS:1500}
     memory:
       self-mysql:
-        jdbc-url: jdbc:mysql://localhost:3306/file_chat_db
-        username: root
+        jdbc-url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/file_chat_db}
+        username: ${MYSQL_USERNAME:root}
         password: ${MySQL_PASSWORD}
         driver-class-name: com.mysql.cj.jdbc.Driver
         enabled: true

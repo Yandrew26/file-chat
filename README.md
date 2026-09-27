@@ -43,15 +43,16 @@ history and chat memory (last 10 messages).
    mysql -uroot -p < sql/schema.sql
    ```
 
-2. Point `spring.elasticsearch.uris` in `file-chat-service/file-chat-service-upload/src/main/resources/application.yaml` at your cluster and set:
+2. Configure your own credentials. Copy `.env.example` to `.env` in the repository root and fill in your DashScope
+   API key and the MySQL and Elasticsearch passwords. `.env` is git-ignored; never commit it. Real environment
+   variables work too and take precedence. The services refuse to start without `API_KEY`, so every deployment runs on
+   its own key and its own bill.
 
    ```sh
-   export MySQL_PASSWORD=...   # MySQL root password
-   export API_KEY=...          # DashScope API key
-   export ELASTICSEARCH_PASSWORD=...   # ELASTICSEARCH_USERNAME defaults to elastic
+   cp .env.example .env
    ```
 
-3. Build and start the services (each in its own terminal):
+3. Build and start the services from the repository root, so they find `.env` (each in its own terminal):
 
    ```sh
    mvn package -DskipTests
@@ -70,20 +71,40 @@ history and chat memory (last 10 messages).
    npm run dev
    ```
 
+## Cost controls
+
+Questions, document searches and uploads call paid DashScope APIs, so the search service limits them. Defaults are
+below; change them in `.env` (see `.env.example`).
+
+| Limit                     | Default    | Variable                           |
+| ------------------------- | ---------- | ---------------------------------- |
+| Questions per client IP   | 10 / min   | `FILECHAT_QUESTIONS_PER_MINUTE`    |
+| Searches per client IP    | 30 / min   | `FILECHAT_SEARCHES_PER_MINUTE`     |
+| Uploads per client IP     | 10 / hour  | `FILECHAT_UPLOADS_PER_HOUR`        |
+| Questions, all users      | 500 / day  | `FILECHAT_QUESTIONS_PER_DAY`       |
+| Searches, all users       | 2000 / day | `FILECHAT_SEARCHES_PER_DAY`        |
+| Uploads, all users        | 100 / day  | `FILECHAT_UPLOADS_PER_DAY`         |
+| Tokens per answer         | 1500       | `FILECHAT_MAX_ANSWER_TOKENS`       |
+| Passages embedded per PDF | 300        | `FILECHAT_MAX_PASSAGES_PER_UPLOAD` |
+
+Over a limit, requests get `429` with a `Retry-After` header. Clients are identified by the address the gateway puts
+in `X-Forwarded-For`, so expose only the gateways, never the services directly, and set `FILECHAT_TRUSTED_PROXIES`
+if you add a reverse proxy in front of the gateway. Also set a spending limit in your DashScope console.
+
 ## Web client API
 
 Paths are relative to the gateway (`http://localhost:8080/system`).
 
-| Method | Path                           | Purpose                                                                 |
-| ------ | ------------------------------ | ----------------------------------------------------------------------- |
-| GET    | `/user/{userId}`               | Sign-in lookup; 404 if the user does not exist                          |
-| POST   | `/graph/create-chat`           | Multipart `userId`, `file` (PDF). Returns `{conversationId, fileName}`  |
-| POST   | `/graph/documents`             | Multipart `conversationId`, `file`. Adds a PDF to a conversation        |
+| Method | Path                           | Purpose                                                                                                                           |
+| ------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/user/{userId}`               | Sign-in lookup; 404 if the user does not exist                                                                                    |
+| POST   | `/graph/create-chat`           | Multipart `userId`, `file` (PDF). Returns `{conversationId, fileName}`                                                            |
+| POST   | `/graph/documents`             | Multipart `conversationId`, `file`. Adds a PDF to a conversation                                                                  |
 | POST   | `/graph/rag/stream`            | JSON `{message, conversationId}`. Streams the answer as server-sent events (GET with query params also works for short questions) |
-| POST   | `/graph/rag`                   | Same, as one JSON response: `{traceId, answer, sources, prompt}`         |
-| GET    | `/graph/search`                | `query`, `conversationId`. Semantic search over the conversation's PDFs |
-| GET    | `/history/pages`               | `userId`, `pageNum`, `pageSize`, optional `dateStart`/`dateEnd`         |
-| GET    | `/history/getByConversationId` | All messages in a conversation                                          |
+| POST   | `/graph/rag`                   | Same, as one JSON response: `{traceId, answer, sources, prompt}`                                                                  |
+| GET    | `/graph/search`                | `query`, `conversationId`. Semantic search over the conversation's PDFs                                                           |
+| GET    | `/history/pages`               | `userId`, `pageNum`, `pageSize`, optional `dateStart`/`dateEnd`                                                                   |
+| GET    | `/history/getByConversationId` | All messages in a conversation                                                                                                    |
 
 `/graph/rag/stream` emits these events, each with a JSON `data` payload:
 

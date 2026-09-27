@@ -11,6 +11,9 @@ server:
     uri-encoding: UTF-8
 
 spring:
+  config:
+    # Secrets come from the environment or a git-ignored .env in the directory you start the service from (see .env.example)
+    import: optional:file:.env[.properties]
   application:
     name: file-chat-gateway
   lifecycle:

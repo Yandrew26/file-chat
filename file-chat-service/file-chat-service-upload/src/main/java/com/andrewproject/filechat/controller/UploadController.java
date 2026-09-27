@@ -32,6 +32,9 @@ import java.util.regex.Pattern;
 @RequestMapping("/upload")
 public class UploadController {
 
+    @Value("${filechat.upload.max-passages:300}")
+    private int maxPassages;
+
     @Value("${spring.ai.vectorstore.elasticsearch.top-k}")
     private Integer topK;
 
@@ -69,6 +72,10 @@ public class UploadController {
         byte[] file = readPdfBody(request);
         ByteArrayResource resource = new ByteArrayResource(file);
         List<Document> pdfDocuments = uploadService.pdfUpload(resource);
+        if (pdfDocuments.size() > maxPassages) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "This PDF is too long to index (" + pdfDocuments.size() + " passages, the limit is " + maxPassages + ")");
+        }
         if (StringUtils.isNotBlank(fileName)) {
             pdfDocuments.forEach(document -> document.getMetadata().put("file_name", fileName));
         }

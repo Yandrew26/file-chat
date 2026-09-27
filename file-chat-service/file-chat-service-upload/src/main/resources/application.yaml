@@ -5,7 +5,15 @@ server:
       charset: UTF-8
       force: true
 
+filechat:
+  upload:
+    # Largest document that will be embedded, in passages of up to 1024 tokens; bounds the embedding cost per upload
+    max-passages: ${FILECHAT_MAX_PASSAGES_PER_UPLOAD:300}
+
 spring:
+  config:
+    # Secrets come from the environment or a git-ignored .env in the directory you start the service from (see .env.example)
+    import: optional:file:.env[.properties]
   application:
     name: file-chat-service-upload
   messages:
@@ -14,7 +22,7 @@ spring:
   profiles:
     active: dev
   elasticsearch:
-    uris: http://localhost:9200
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
     username: ${ELASTICSEARCH_USERNAME:elastic}
     password: ${ELASTICSEARCH_PASSWORD}
   ai:

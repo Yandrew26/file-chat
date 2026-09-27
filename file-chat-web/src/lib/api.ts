@@ -80,6 +80,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 function defaultMessage(status: number): string {
   if (status === 403) return 'The server refused this request.'
   if (status === 404) return 'Not found.'
+  if (status === 429) return 'You’re sending requests too quickly. Please wait a moment and try again.'
   if (status === 413) return 'That file is too large. The limit is 50 MB.'
   if (status === 415) return 'Only PDF files are supported.'
   if (status >= 500) return 'The server ran into a problem. Please try again.'

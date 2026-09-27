@@ -2,12 +2,15 @@ server:
   port: 8084
 
 spring:
+  config:
+    # Secrets come from the environment or a git-ignored .env in the directory you start the service from (see .env.example)
+    import: optional:file:.env[.properties]
   application:
     name: file-chat-service-auth
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/file_chat_db
-    username: root
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/file_chat_db}
+    username: ${MYSQL_USERNAME:root}
     password: ${MySQL_PASSWORD}
   mybatis-plus:
     mapper-locations: classpath*:mapper/**/*.xml
