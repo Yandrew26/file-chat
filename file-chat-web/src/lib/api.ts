@@ -78,6 +78,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 function defaultMessage(status: number): string {
+  if (status === 403) return 'The server refused this request.'
   if (status === 404) return 'Not found.'
   if (status === 413) return 'That file is too large. The limit is 50 MB.'
   if (status === 415) return 'Only PDF files are supported.'
@@ -128,8 +129,29 @@ export function searchDocument(conversationId: string, query: string, signal?: A
   return getJson<Passage[]>('/graph/search', { conversationId, query }, signal)
 }
 
-export function askOnce(conversationId: string, message: string, signal?: AbortSignal) {
-  return getJson<AnswerResult>('/graph/rag', { conversationId, message }, signal)
+/** Questions are sent in the body: long or non-ASCII text would overflow the gateway's URL length limit. */
+export const MAX_QUESTION_LENGTH = 4000
+
+async function postJson(path: string, body: unknown, signal?: AbortSignal, accept = 'application/json') {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: accept },
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') throw error
+    throw new ApiError(0, 'Could not reach the FileChat server. Is the gateway running?')
+  }
+  if (!response.ok) throw await toApiError(response)
+  return response
+}
+
+export async function askOnce(conversationId: string, message: string, signal?: AbortSignal) {
+  const response = await postJson('/graph/rag', { conversationId, message }, signal)
+  return (await response.json()) as AnswerResult
 }
 
 /** Uploads with XMLHttpRequest so upload progress can be reported. */
@@ -182,18 +204,8 @@ export async function streamAnswer(
   onEvent: (event: StreamEvent) => void,
   signal: AbortSignal,
 ) {
-  const query = new URLSearchParams({ conversationId, message })
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE}/graph/rag/stream?${query}`, {
-      headers: { Accept: 'text/event-stream' },
-      signal,
-    })
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') throw error
-    throw new ApiError(0, 'Could not reach the FileChat server. Is the gateway running?')
-  }
-  if (!response.ok || !response.body) throw await toApiError(response)
+  const response = await postJson('/graph/rag/stream', { conversationId, message }, signal, 'text/event-stream')
+  if (!response.body) throw new ApiError(0, 'The server sent an empty response.')
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
   const parser = new SseParser()

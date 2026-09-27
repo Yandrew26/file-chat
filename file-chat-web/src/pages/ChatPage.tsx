@@ -315,6 +315,7 @@ function ChatPage({ conversationId }: { conversationId: string }) {
               <input
                 ref={fileInput}
                 type="file"
+                aria-label="Add a PDF to this conversation"
                 accept="application/pdf,.pdf"
                 className="sr-only"
                 tabIndex={-1}

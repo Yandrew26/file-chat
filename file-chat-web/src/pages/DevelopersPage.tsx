@@ -151,7 +151,11 @@ export function DevelopersPage() {
               ))}
             </div>
             <div className="relative mt-4">
-              <pre className="overflow-x-auto rounded-xl bg-[#1a1c22] p-4 font-mono text-[12.5px] leading-relaxed text-[#e6e6e3]">
+              <pre
+                tabIndex={0}
+                aria-label="Example curl command"
+                className="overflow-x-auto rounded-xl bg-[#1a1c22] p-4 font-mono text-[12.5px] leading-relaxed text-[#e6e6e3]"
+              >
                 {curl}
               </pre>
               <div className="absolute top-2 right-2">
@@ -184,7 +188,11 @@ export function DevelopersPage() {
                       <span className="text-muted">{statusText(result.status)}</span>
                     </p>
                     {result.body && (
-                      <pre className="mt-2 max-h-72 overflow-auto rounded-xl border border-line bg-sunken p-4 font-mono text-[12px] leading-relaxed">
+                      <pre
+                        tabIndex={0}
+                        aria-label="Response body"
+                        className="mt-2 max-h-72 overflow-auto rounded-xl border border-line bg-sunken p-4 font-mono text-[12px] leading-relaxed"
+                      >
                         {result.body}
                       </pre>
                     )}

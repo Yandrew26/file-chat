@@ -40,6 +40,7 @@ export function UploadDropzone({ state, onFile }: UploadDropzoneProps) {
       <input
         ref={input}
         type="file"
+        aria-label="Upload a PDF"
         accept="application/pdf,.pdf"
         className="sr-only"
         tabIndex={-1}

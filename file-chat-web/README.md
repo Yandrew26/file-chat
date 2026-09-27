@@ -18,6 +18,14 @@ See `.env.example`. In development the Vite proxy forwards API calls, so no CORS
 app from another origin, set `VITE_API_BASE` / `VITE_OPENAPI_BASE` to the gateway URLs at build time and allow that
 origin on the gateway with `FILECHAT_ALLOWED_ORIGINS`.
 
+## Security notes
+
+- Production builds carry a Content-Security-Policy (see `vite.config.ts`): scripts only from the app itself, images
+  only same-origin, so injected markup cannot run code or send data out through image requests.
+- Answers are rendered with `react-markdown` without raw HTML, and images in model output are never loaded.
+- The dev/preview proxy drops the browser's `Origin` header because it serves the API same-origin. A production reverse
+  proxy should do the same, or the app's origin must be listed in `FILECHAT_ALLOWED_ORIGINS` on the gateway.
+
 ## Features
 
 - **Sign in** with a user ID from the `system_user` table.

