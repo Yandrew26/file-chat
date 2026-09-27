@@ -15,7 +15,7 @@ public interface ChatHistoryMapper extends BaseMapper<ChatHistory> {
             "SELECT *, ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY created_date ASC) AS rn\n" +
             "FROM rag_chat_history\n" +
             "WHERE" +
-            "(#{user_id} = '' OR #{user_id} IS NULL OR user_id LIKE concat('%',replace(replace(#{user_id},'%','/%'),'_','/_'),'%') ESCAPE '/') " +
+            "(#{user_id} = '' OR #{user_id} IS NULL OR user_id = #{user_id}) " +
             "AND (#{dateStart} IS NULL OR #{dateStart} = '' OR created_date >= #{dateStart})\n" +
             "AND (#{dateEnd} IS NULL OR #{dateEnd} = '' OR created_date <= #{dateEnd})\n" +
             ")\n" +
@@ -35,7 +35,7 @@ public interface ChatHistoryMapper extends BaseMapper<ChatHistory> {
             "SELECT *, ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY created_date ASC) AS rn\n" +
             "FROM rag_chat_history\n" +
             "WHERE" +
-            "(#{user_id} = '' OR #{user_id} IS NULL OR user_id LIKE concat('%',replace(replace(#{user_id},'%','/%'),'_','/_'),'%') ESCAPE '/') " +
+            "(#{user_id} = '' OR #{user_id} IS NULL OR user_id = #{user_id}) " +
             "AND (#{dateStart} IS NULL OR #{dateStart} = '' OR created_date >= #{dateStart})\n" +
             "AND (#{dateEnd} IS NULL OR #{dateEnd} = '' OR created_date <= #{dateEnd})\n" +
             ")\n" +

@@ -74,8 +74,8 @@ public class GraphProcess {
                 .concatWith(Flux.just(event("done", Map.of("traceId", traceId))))
                 .onErrorResume(e -> {
                     logger.error("traceId:{} - graph stream failed", traceId, e);
-                    String message = e.getMessage() == null ? "The answer could not be generated." : e.getMessage();
-                    return Flux.just(event("error", Map.of("message", message)));
+                    // Details stay in the log; exception messages can expose internal hosts
+                    return Flux.just(event("error", Map.of("message", "The answer could not be generated. Please try again.")));
                 });
     }
 
