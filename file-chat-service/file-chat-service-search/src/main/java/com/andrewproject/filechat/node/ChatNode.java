@@ -8,7 +8,6 @@ import com.alibaba.cloud.ai.graph.streaming.StreamingChatGenerator;
 import com.andrewproject.filechat.config.advisor.ChatHistoryAdvisor;
 import com.andrewproject.filechat.config.memory.SelfMysqlChatMemoryRepository;
 import com.andrewproject.filechat.enums.NodeStatus;
-import com.andrewproject.filechat.feign.UploadFeign;
 import com.andrewproject.filechat.service.ChatHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -21,7 +20,6 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.core.io.Resource;
-import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -72,9 +70,10 @@ public class ChatNode implements NodeAction {
         String userId = state.value("userId","");
         String userName = state.value("userName","");
         List<String> elasticsearchList = state.value("elasticsearch_list", new ArrayList<>());
+        List<String> neo4jResults = state.value(Neo4jSearchNode.NODE_CONTENT, new ArrayList<>());
 
         Flux<ChatResponse> chatResponseFlux = chatClientBuilder.build()
-                .prompt(getPrompt(message, elasticsearchList))
+                .prompt(getPrompt(message, elasticsearchList, neo4jResults))
                 .advisors(getAdvisors(conversationId, traceId, userId, userName))
                 .stream().chatResponse();
 
@@ -114,13 +113,15 @@ public class ChatNode implements NodeAction {
         return advisors;
     }
 
-    private Prompt getPrompt(String message, List<String> elasticsearchList) {
+    private Prompt getPrompt(String message, List<String> elasticsearchList, List<String> neo4jResults) {
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(promptTemplateResource);
         Message systemMessage = systemPromptTemplate.createMessage(Map.of("name", "filechat",
                 "voice", "friendly assistant",
-                "elasticsearch_results", elasticsearchList));
+                "elasticsearch_results", elasticsearchList,
+                "neo4j_results", neo4jResults));
 
         log.info("Elasticsearch results: {}", elasticsearchList);
+        log.info("Neo4j results: {}", neo4jResults);
 
         UserMessage userMessage = new UserMessage(message);
 

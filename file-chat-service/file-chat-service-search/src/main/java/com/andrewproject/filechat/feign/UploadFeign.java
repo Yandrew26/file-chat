@@ -19,4 +19,7 @@ public interface UploadFeign {
     @PostMapping("/upload/pdf")
     ResponseEntity<String> pdfUpload(@RequestBody byte[] file,
                                      @RequestParam("conversationId") String conversationId);
+
+    @GetMapping("/upload/search/author")
+    List<String> searchAuthor(@RequestParam("conversationId") String conversationId);
 }

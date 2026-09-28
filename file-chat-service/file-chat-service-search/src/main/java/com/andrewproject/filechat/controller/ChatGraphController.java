@@ -61,8 +61,9 @@ public class ChatGraphController {
             String userName = systemUserService.getUserByUserId(userId).getUserName();
             String traceId = UUID.randomUUID().toString().replaceAll("-", "");
             List<String> elasticsearchList = uploadFeign.searchString(message, conversationId);
+            List<String> authorList = uploadFeign.searchAuthor(conversationId);
 
-            Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, userId, userName, elasticsearchList);
+            Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, userId, userName, elasticsearchList, authorList);
 
             OverAllState result = compiledGraph.invoke(objectMap).get();
 
@@ -78,10 +79,10 @@ public class ChatGraphController {
         String userName = systemUserService.getUserByUserId(userId).getUserName();
         String traceId = UUID.randomUUID().toString().replaceAll("-", "");
         List<String> elasticsearchList = uploadFeign.searchString(message, conversationId);
+        List<String> authorList = uploadFeign.searchAuthor(conversationId);
         RunnableConfig runnableConfig = RunnableConfig.builder().threadId(traceId).build();
 
-        Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, userId, userName, elasticsearchList);
-
+        Map<String, Object> objectMap = setupGraph(message, conversationId, traceId, userId, userName, elasticsearchList, authorList);
         GraphProcess graphProcess = new GraphProcess(compiledGraph);
         Sinks.Many<ServerSentEvent<String>> sink = Sinks.many().unicast().onBackpressureBuffer();
         AsyncGenerator<NodeOutput> resultFuture = compiledGraph.stream(objectMap, runnableConfig);
@@ -92,7 +93,7 @@ public class ChatGraphController {
                 .doOnError(e -> log.info("Error occurred during streaming", e));
     }
 
-    private Map<String, Object> setupGraph(String message, String conversationId, String traceId, String userId, String userName, List<String> elasticsearchList) {
+    private Map<String, Object> setupGraph(String message, String conversationId, String traceId, String userId, String userName, List<String> elasticsearchList, List<String>  authorList) throws GraphRunnerException {
         Map<String, Object> objectMap = new HashMap<>();
         objectMap.put("message", message);
         objectMap.put("conversationId", conversationId);
@@ -100,6 +101,7 @@ public class ChatGraphController {
         objectMap.put("userId", userId);
         objectMap.put("userName", userName);
         objectMap.put("elasticsearch_list", elasticsearchList);
+        objectMap.put("author_list", authorList);
         return objectMap;
     }
 }

@@ -9,10 +9,8 @@ import com.alibaba.cloud.ai.graph.state.strategy.ReplaceStrategy;
 import com.andrewproject.filechat.config.memory.SelfMysqlChatMemoryRepository;
 import com.andrewproject.filechat.enums.NodeStatus;
 import com.andrewproject.filechat.feign.UploadFeign;
-import com.andrewproject.filechat.node.ChatNode;
-import com.andrewproject.filechat.node.MergeNode;
-import com.andrewproject.filechat.node.PromptTemplateNode;
-import com.andrewproject.filechat.node.VectorSearchNode;
+import com.andrewproject.filechat.node.*;
+import com.andrewproject.filechat.repository.AuthorRepository;
 import com.andrewproject.filechat.service.ChatHistoryService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +36,9 @@ public class ParallelGraphConfig {
     @Resource
     private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private AuthorRepository authorRepository;
+
     @Bean
     public StateGraph parallelStreamGraph(ChatClient.Builder chatClientBuilder, SelfMysqlChatMemoryRepository selfMysqlChatMemoryRepository) throws GraphStateException {
 
@@ -50,10 +51,13 @@ public class ParallelGraphConfig {
             keyStrategyHashMap.put("user_id", new ReplaceStrategy());
             keyStrategyHashMap.put("user_name", new ReplaceStrategy());
             keyStrategyHashMap.put("elasticsearch_list", new ReplaceStrategy());
+            keyStrategyHashMap.put("author_list", new ReplaceStrategy());
 
             keyStrategyHashMap.put(ChatNode.NODE_CONTENT, new ReplaceStrategy());
             keyStrategyHashMap.put(PromptTemplateNode.NODE_CONTENT, new ReplaceStrategy());
             keyStrategyHashMap.put(VectorSearchNode.NODE_CONTENT, new ReplaceStrategy());
+            keyStrategyHashMap.put(AuthorExtractionNode.NODE_CONTENT, new ReplaceStrategy());
+            keyStrategyHashMap.put(Neo4jSearchNode.NODE_CONTENT, new ReplaceStrategy());
 
             return keyStrategyHashMap;
         };
@@ -65,10 +69,16 @@ public class ParallelGraphConfig {
                         chatClientBuilder, promptTemplate, node2Status)))
                 .addNode(PromptTemplateNode.NODE_NAME, node_async(new PromptTemplateNode(node2Status, promptTemplate)))
                 .addNode(VectorSearchNode.NODE_NAME, node_async(new VectorSearchNode(node2Status)))
+                .addNode(AuthorExtractionNode.NODE_NAME, node_async(new AuthorExtractionNode(node2Status, chatClientBuilder)))
+                .addNode(Neo4jSearchNode.NODE_NAME, node_async(new Neo4jSearchNode(node2Status, authorRepository)))
                 .addNode(MergeNode.NODE_NAME, node_async(new MergeNode(node2Status)))
 
-                .addEdge(START, PromptTemplateNode.NODE_NAME)
-                .addEdge(START, VectorSearchNode.NODE_NAME)
+                .addEdge(START, AuthorExtractionNode.NODE_NAME)
+
+                .addEdge(AuthorExtractionNode.NODE_NAME, Neo4jSearchNode.NODE_NAME)
+
+                .addEdge(Neo4jSearchNode.NODE_NAME, PromptTemplateNode.NODE_NAME)
+                .addEdge(Neo4jSearchNode.NODE_NAME, VectorSearchNode.NODE_NAME)
 
                 .addEdge(PromptTemplateNode.NODE_NAME, ChatNode.NODE_NAME)
                 .addEdge(VectorSearchNode.NODE_NAME, ChatNode.NODE_NAME)

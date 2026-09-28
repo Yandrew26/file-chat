@@ -81,6 +81,18 @@ public class UploadController {
         return search.stream().map(Document::getText).toList();
     }
 
+    @GetMapping("/search/author")
+    public List<String> searchAuthor(@RequestParam("conversationId") String conversationId) {
+        log.info("author search begin");
+        List<Document> search = selfElasticsearchVectorStore.similaritySearch(SearchRequest
+                .builder()
+                .query("who is the author of the document?")
+                .topK(1)
+                .filterExpression("conversation_id == '" + conversationId + "'")
+                .build());
+        return search.stream().map(Document::getText).toList();
+    }
+
     private void createIndexIfNotExists() {
         try {
             String indexName = options.getIndexName();
