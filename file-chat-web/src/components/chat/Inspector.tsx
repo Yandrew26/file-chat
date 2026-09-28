@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
-import { BookOpen, Search, ScrollText, X } from 'lucide-react'
+import { BookOpen, Library, Search, ScrollText, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { searchDocument, type Passage } from '../../lib/api'
+import { searchDocument, type Passage, type RelatedWork } from '../../lib/api'
 import { promptStore } from '../../lib/storage'
 import { useStore } from '../../lib/store'
 import { Button, IconButton } from '../ui/Button'
@@ -13,6 +13,7 @@ export type InspectorTab = 'sources' | 'search' | 'prompt'
 export interface SourcesSelection {
   question?: string
   sources?: Passage[]
+  related?: RelatedWork[]
   cited: number[]
   /** Passage to scroll to and flash, with a nonce so repeated clicks flash again */
   focus?: { n: number; nonce: number }
@@ -64,7 +65,8 @@ export function Inspector({ tab, onTabChange, onClose, selection, conversationId
         role="tabpanel"
         id={`panel-${tab}`}
         aria-labelledby={`tab-${tab}`}
-        className="min-h-0 flex-1 overflow-y-auto"
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-y-auto focus-visible:outline-offset-[-2px]"
       >
         {tab === 'sources' && <SourcesTab selection={selection} />}
         {tab === 'search' && <SearchTab conversationId={conversationId} />}
@@ -97,11 +99,16 @@ function SourcesTab({ selection }: { selection: SourcesSelection | null }) {
   }
   if (selection.sources.length === 0) {
     return (
-      <EmptyState
-        icon={<BookOpen className="size-5" />}
-        title="Nothing matched"
-        body="No passages in the document were close enough to this question, so the answer isn’t grounded in it."
-      />
+      <>
+        <EmptyState
+          icon={<BookOpen className="size-5" />}
+          title="Nothing matched"
+          body="No passages in the document were close enough to this question, so the answer isn’t grounded in it."
+        />
+        <div className="px-4">
+          <RelatedWorks related={selection.related} />
+        </div>
+      </>
     )
   }
 
@@ -125,7 +132,29 @@ function SourcesTab({ selection }: { selection: SourcesSelection | null }) {
           flash={focus?.n === index + 1}
         />
       ))}
+      <RelatedWorks related={selection.related} />
     </div>
+  )
+}
+
+/** Other ebooks by the documents' authors, from the Neo4j catalog. */
+function RelatedWorks({ related }: { related?: RelatedWork[] }) {
+  if (!related?.length) return null
+  return (
+    <section aria-labelledby="related-heading" className="pt-4 pb-2">
+      <h3 id="related-heading" className="flex items-center gap-1.5 text-xs font-medium text-subtle">
+        <Library className="size-3.5" />
+        More by these authors
+      </h3>
+      <ul className="mt-2 divide-y divide-line rounded-xl border border-line bg-surface shadow-card">
+        {related.map((work) => (
+          <li key={`${work.title}-${work.authors.join()}`} className="px-4 py-3">
+            <p className="font-serif text-[15px] leading-snug">{work.title}</p>
+            <p className="mt-0.5 text-xs text-muted">{work.authors.join(', ')}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

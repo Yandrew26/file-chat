@@ -33,6 +33,7 @@ history and chat memory (last 10 messages).
 - Node.js 20.19+
 - MySQL 8
 - Elasticsearch 8 with dense vector support
+- Neo4j 5 (optional, for author recommendations)
 - A DashScope API key
 
 ## Running locally
@@ -70,6 +71,33 @@ history and chat memory (last 10 messages).
    npm install
    npm run dev
    ```
+
+## Author recommendations (Neo4j)
+
+Answers end with other ebooks by the same authors, taken from a catalog in Neo4j:
+
+```cypher
+(:Author {name})-[:WROTE]->(:Ebook {title})
+```
+
+When a PDF is uploaded, the model reads its opening passages once to extract the title and authors, and the search
+service links the document to the matching catalog authors (by name, case-insensitive) with
+`(:Document {conversationId, fileName, title, userId})-[:WRITTEN_BY]->(:Author)`. It never creates Author or Ebook
+nodes, so the catalog stays as you loaded it, and one user's uploads are never recommended to another. Each question
+then runs one Cypher query, in parallel with the vector search; the results appear in the answer and in the Sources
+panel under "More by these authors".
+
+Load your catalog with Cypher, for example:
+
+```cypher
+MERGE (a:Author {name: 'Maria Chen'})
+MERGE (b:Ebook {title: 'Subscription Economics'})
+MERGE (a)-[:WROTE]->(b)
+```
+
+Neo4j is optional. Set `FILECHAT_NEO4J_ENABLED=false` to run without it; if it is configured but unreachable,
+questions still work, without recommendations, and it is retried after a minute. `FILECHAT_DEBUG_ENDPOINTS=true`
+enables `/test/getAuthor?name=` and `/test/books/byAuthor?name=` for inspecting the catalog during development.
 
 ## Cost controls
 

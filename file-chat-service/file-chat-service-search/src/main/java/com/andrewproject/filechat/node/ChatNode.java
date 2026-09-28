@@ -61,9 +61,10 @@ public class ChatNode implements NodeAction {
         String userId = state.value("userId","");
         String userName = state.value("userName","");
         List<String> elasticsearchList = state.value("elasticsearch_list", new ArrayList<>());
+        List<Map<String, Object>> relatedWorks = state.value(Neo4jSearchNode.NODE_CONTENT, new ArrayList<>());
 
         Flux<ChatResponse> chatResponseFlux = chatClientBuilder.build()
-                .prompt(getPrompt(message, elasticsearchList))
+                .prompt(getPrompt(message, elasticsearchList, relatedWorks))
                 .advisors(spec -> spec.advisors(getAdvisors(conversationId, traceId, userId, userName))
                         .param(ChatMemory.CONVERSATION_ID, conversationId))
                 .stream().chatResponse();
@@ -92,13 +93,15 @@ public class ChatNode implements NodeAction {
         return advisors;
     }
 
-    private Prompt getPrompt(String message, List<String> elasticsearchList) {
+    private Prompt getPrompt(String message, List<String> elasticsearchList, List<Map<String, Object>> relatedWorks) {
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(promptTemplateResource);
         Message systemMessage = systemPromptTemplate.createMessage(Map.of("name", "filechat",
                 "voice", "friendly assistant",
-                "elasticsearch_results", numberPassages(elasticsearchList)));
+                "elasticsearch_results", numberPassages(elasticsearchList),
+                "neo4j_results", listRelatedWorks(relatedWorks)));
 
         log.info("Elasticsearch results: {}", elasticsearchList);
+        log.info("Neo4j results: {}", relatedWorks);
 
         UserMessage userMessage = new UserMessage(message);
 
@@ -116,6 +119,19 @@ public class ChatNode implements NodeAction {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < passages.size(); i++) {
             sb.append('[').append(i + 1).append("] ").append(passages.get(i)).append("\n\n");
+        }
+        return sb.toString();
+    }
+
+    private static String listRelatedWorks(List<Map<String, Object>> relatedWorks) {
+        if (relatedWorks.isEmpty()) {
+            return "None";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map<String, Object> work : relatedWorks) {
+            Object authors = work.get("authors");
+            String byline = authors instanceof List<?> names ? String.join(", ", names.stream().map(String::valueOf).toList()) : String.valueOf(authors);
+            sb.append("- ").append(work.get("title")).append(" (by ").append(byline).append(")\n");
         }
         return sb.toString();
     }

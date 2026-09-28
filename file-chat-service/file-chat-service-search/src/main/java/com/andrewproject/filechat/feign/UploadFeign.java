@@ -28,6 +28,11 @@ public interface UploadFeign {
     record PassageSearchRequest(String query, String conversationId) {
     }
 
+    /** Opening passages of a document (where title and authors usually appear), for metadata extraction. */
+    @GetMapping("/upload/search/author")
+    List<String> searchAuthor(@RequestParam("conversationId") String conversationId,
+                              @RequestParam("fileName") String fileName);
+
     @PostMapping("/upload/pdf")
     ResponseEntity<String> pdfUpload(@RequestBody byte[] file,
                                      @RequestParam("conversationId") String conversationId,

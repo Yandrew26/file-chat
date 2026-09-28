@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.streaming.OutputType;
 import com.alibaba.cloud.ai.graph.streaming.StreamingOutput;
 import com.andrewproject.filechat.node.ChatNode;
+import com.andrewproject.filechat.node.Neo4jSearchNode;
 import com.andrewproject.filechat.node.PromptTemplateNode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>{@code meta}    – {@code {"traceId", "conversationId"}}, sent first</li>
  *   <li>{@code sources} – the retrieved passages, as a JSON array</li>
  *   <li>{@code prompt}  – the system prompt template, as a JSON string</li>
+ *   <li>{@code related} – other works by the documents' authors: {@code [{"title", "authors"}]}</li>
  *   <li>{@code token}   – {@code {"text"}}, one per streamed chunk of the answer</li>
  *   <li>{@code done}    – the answer has finished streaming</li>
  *   <li>{@code error}   – {@code {"message"}}, the stream failed</li>
@@ -43,6 +46,7 @@ public class GraphProcess {
                                                                   String conversationId,
                                                                   List<?> sources) {
         AtomicBoolean promptSent = new AtomicBoolean(false);
+        AtomicBoolean relatedSent = new AtomicBoolean(false);
 
         Flux<ServerSentEvent<String>> head = Flux.just(
                 event("meta", Map.of("traceId", traceId, "conversationId", conversationId)),
@@ -60,13 +64,17 @@ public class GraphProcess {
                 return text == null || text.isEmpty() ? Flux.empty() : Flux.just(event("token", Map.of("text", text)));
             }
             OverAllState state = output.state();
-            if (state != null && !promptSent.get()) {
-                Object prompt = state.value(PromptTemplateNode.NODE_CONTENT).orElse(null);
-                if (prompt != null && promptSent.compareAndSet(false, true)) {
-                    return Flux.just(event("prompt", prompt));
-                }
+            if (state == null) {
+                return Flux.empty();
             }
-            return Flux.empty();
+            List<ServerSentEvent<String>> events = new ArrayList<>();
+            state.value(PromptTemplateNode.NODE_CONTENT)
+                    .filter(prompt -> promptSent.compareAndSet(false, true))
+                    .ifPresent(prompt -> events.add(event("prompt", prompt)));
+            state.value(Neo4jSearchNode.NODE_CONTENT)
+                    .filter(related -> relatedSent.compareAndSet(false, true))
+                    .ifPresent(related -> events.add(event("related", related)));
+            return Flux.fromIterable(events);
         });
 
         return head

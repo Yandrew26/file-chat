@@ -9,7 +9,9 @@ import com.andrewproject.filechat.dto.SystemUserDTO;
 import com.andrewproject.filechat.feign.UploadFeign;
 import com.andrewproject.filechat.node.ChatNode;
 import com.andrewproject.filechat.node.MergeNode;
+import com.andrewproject.filechat.node.Neo4jSearchNode;
 import com.andrewproject.filechat.node.PromptTemplateNode;
+import com.andrewproject.filechat.service.DocumentGraphService;
 import com.andrewproject.filechat.service.SystemUserService;
 import feign.FeignException;
 import jakarta.annotation.Resource;
@@ -49,6 +51,9 @@ public class ChatGraphController {
 
     @Resource
     private SystemUserService systemUserService;
+
+    @Resource
+    private DocumentGraphService documentGraphService;
 
     private final CompiledGraph compiledGraph;
 
@@ -119,6 +124,7 @@ public class ChatGraphController {
         response.put("answer", answer);
         response.put("sources", passages);
         response.put("prompt", result.value(PromptTemplateNode.NODE_CONTENT).orElse(""));
+        response.put("related", result.value(Neo4jSearchNode.NODE_CONTENT).orElse(List.of()));
         return ResponseEntity.ok(response);
     }
 
@@ -193,6 +199,7 @@ public class ChatGraphController {
             throw e;
         }
         log.info("conversationId:{} - uploaded {}: {}", conversationId, fileName, uploadResponse.getBody());
+        documentGraphService.indexDocument(conversationId.split("_")[0], conversationId, fileName);
         return fileName;
     }
 

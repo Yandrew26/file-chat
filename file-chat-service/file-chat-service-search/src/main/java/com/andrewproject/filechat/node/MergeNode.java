@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import org.springframework.ai.chat.messages.AbstractMessage;
 
+import java.util.List;
 import java.util.Map;
 
 public class MergeNode implements NodeAction {
@@ -20,9 +21,11 @@ public class MergeNode implements NodeAction {
                 .orElse("");
         Object promptTemplateContent = state.value(PromptTemplateNode.NODE_CONTENT).orElse("");
         Object vectorSearchContent = state.value(VectorSearchNode.NODE_CONTENT).orElse("");
+        Object neo4jSearchContent = state.value(Neo4jSearchNode.NODE_CONTENT).orElse(List.of());
 
         return Map.of(NODE_CONTENT, Map.of("chat_content", chatContent,
                 "prompt_template_content", promptTemplateContent,
-                "vector_search_content", vectorSearchContent));
+                "vector_search_content", vectorSearchContent,
+                "neo4j_search_content", neo4jSearchContent));
     }
 }

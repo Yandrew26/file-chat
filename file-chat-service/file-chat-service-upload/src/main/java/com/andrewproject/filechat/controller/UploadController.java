@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -117,6 +118,33 @@ public class UploadController {
                 .filterExpression(conversationFilter(conversationId))
                 .build());
         return search.stream().map(PassageDTO::from).toList();
+    }
+
+    /**
+     * Opening passages of one document in a conversation, where its title and authors usually appear. Used by the
+     * search service to extract metadata for the author graph.
+     */
+    @GetMapping("/search/author")
+    public List<String> searchAuthor(@RequestParam("conversationId") String conversationId,
+                                     @RequestParam(value = "fileName", required = false) String fileName) {
+        log.info("author search begin");
+        List<Document> search = selfElasticsearchVectorStore.similaritySearch(SearchRequest
+                .builder()
+                .query("title and authors of the document")
+                .topK(10)
+                .filterExpression(conversationFilter(conversationId))
+                .build());
+        return search.stream()
+                // A conversation can hold several PDFs; keep the one that was just uploaded
+                .filter(document -> fileName == null || fileName.equals(document.getMetadata().get("file_name")))
+                .sorted(Comparator.comparingInt(UploadController::pageNumber))
+                .limit(3)
+                .map(Document::getText)
+                .toList();
+    }
+
+    private static int pageNumber(Document document) {
+        return document.getMetadata().get("page_number") instanceof Number number ? number.intValue() : Integer.MAX_VALUE;
     }
 
     @GetMapping("/search/string")

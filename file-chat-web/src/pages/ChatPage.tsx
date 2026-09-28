@@ -4,13 +4,15 @@ import { ArrowDown, FileText, PanelRight, Paperclip, RotateCcw } from 'lucide-re
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
-import { addDocument, askOnce, streamAnswer, type Passage } from '../lib/api'
+import { addDocument, askOnce, streamAnswer, type Passage, type RelatedWork } from '../lib/api'
 import { citedNumbers } from '../lib/citations'
 import { formatBytes, parseServerDate, truncate } from '../lib/format'
 import {
   documentsStore,
   promptStore,
+  relatedStore,
   rememberDocument,
+  rememberRelated,
   rememberSources,
   settingsStore,
   sourcesStore,
@@ -40,6 +42,7 @@ interface Turn {
   createdAt: Date
   traceId?: string
   sources?: Passage[]
+  related?: RelatedWork[]
   error?: string
 }
 
@@ -61,6 +64,7 @@ function ChatPage({ conversationId }: { conversationId: string }) {
   const user = useStore(userStore)!
   const settings = useStore(settingsStore)
   const savedSources = useStore(sourcesStore)
+  const savedRelated = useStore(relatedStore)
   const conversationDocs = useStore(documentsStore)[conversationId]
   const queryClient = useQueryClient()
   const history = useMessages(conversationId)
@@ -100,6 +104,7 @@ function ChatPage({ conversationId }: { conversationId: string }) {
           question,
           status: 'done',
           sources: savedSources.byTrace[message.traceId],
+          related: savedRelated.byTrace[message.traceId],
         })
       }
     })
@@ -116,17 +121,24 @@ function ChatPage({ conversationId }: { conversationId: string }) {
         question: turn.question,
         status: turn.status,
         sources: turn.sources,
+        related: turn.related,
         error: turn.error,
         retryId: turn.id,
       })
     }
     return result
-  }, [history.data, savedSources, turns])
+  }, [history.data, savedSources, savedRelated, turns])
 
   const answers = items.filter((item): item is Extract<ChatItem, { kind: 'assistant' }> => item.kind === 'assistant')
   const selected = answers.find((item) => item.key === selectedKey) ?? answers.at(-1)
   const selection: SourcesSelection | null = selected
-    ? { question: selected.question, sources: selected.sources, cited: citedNumbers(selected.text), focus }
+    ? {
+        question: selected.question,
+        sources: selected.sources,
+        related: selected.related,
+        cited: citedNumbers(selected.text),
+        focus,
+      }
     : null
 
   const firstQuestion = items.find((item) => item.kind === 'user')?.text
@@ -191,6 +203,10 @@ function ChatPage({ conversationId }: { conversationId: string }) {
                 case 'prompt':
                   promptStore.set(event.prompt)
                   break
+                case 'related':
+                  if (traceId) rememberRelated(traceId, event.related)
+                  update({ related: event.related })
+                  break
                 case 'token':
                   pendingText += event.text
                   if (!frame) frame = requestAnimationFrame(flush)
@@ -210,8 +226,15 @@ function ChatPage({ conversationId }: { conversationId: string }) {
         } else {
           const result = await askOnce(conversationId, question, abort.signal)
           rememberSources(result.traceId, result.sources)
+          if (result.related) rememberRelated(result.traceId, result.related)
           if (result.prompt) promptStore.set(result.prompt)
-          update({ traceId: result.traceId, sources: result.sources, answer: result.answer, status: 'done' })
+          update({
+            traceId: result.traceId,
+            sources: result.sources,
+            related: result.related,
+            answer: result.answer,
+            status: 'done',
+          })
         }
       } catch (error) {
         flush()

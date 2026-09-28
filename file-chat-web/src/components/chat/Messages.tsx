@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { AlertCircle, BookOpen, Check, Copy, RotateCcw } from 'lucide-react'
 import { memo, useCallback, useState, type ReactNode } from 'react'
-import type { Passage } from '../../lib/api'
+import type { Passage, RelatedWork } from '../../lib/api'
 import { formatFullDate, formatTime } from '../../lib/format'
 import { LogoMark } from '../Logo'
 import { Spinner } from '../ui/Spinner'
@@ -19,6 +19,7 @@ export type ChatItem =
       question: string
       status: AnswerStatus
       sources?: Passage[]
+      related?: RelatedWork[]
       error?: string
       /** Present on answers from this session that can be asked again */
       retryId?: string

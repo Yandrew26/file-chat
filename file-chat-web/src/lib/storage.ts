@@ -1,4 +1,4 @@
-import type { Passage, User } from './api'
+import type { Passage, RelatedWork, User } from './api'
 import { createStore } from './store'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
@@ -62,6 +62,24 @@ export function rememberSources(traceId: string, sources: Passage[]) {
   sourcesStore.set((saved) => {
     const order = [...saved.order.filter((id) => id !== traceId), traceId]
     const byTrace = { ...saved.byTrace, [traceId]: sources }
+    while (order.length > MAX_SAVED_ANSWERS) delete byTrace[order.shift()!]
+    return { order, byTrace }
+  })
+}
+
+/** Other works by the documents' authors (from the Neo4j catalog), cached per answer like the sources. */
+export const relatedStore = createStore<{ order: string[]; byTrace: Record<string, RelatedWork[]> }>(
+  'filechat.related',
+  {
+    order: [],
+    byTrace: {},
+  },
+)
+
+export function rememberRelated(traceId: string, related: RelatedWork[]) {
+  relatedStore.set((saved) => {
+    const order = [...saved.order.filter((id) => id !== traceId), traceId]
+    const byTrace = { ...saved.byTrace, [traceId]: related }
     while (order.length > MAX_SAVED_ANSWERS) delete byTrace[order.shift()!]
     return { order, byTrace }
   })

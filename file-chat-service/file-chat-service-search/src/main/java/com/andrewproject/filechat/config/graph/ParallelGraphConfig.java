@@ -9,9 +9,11 @@ import com.alibaba.cloud.ai.graph.state.strategy.ReplaceStrategy;
 import com.andrewproject.filechat.config.memory.SelfMysqlChatMemoryRepository;
 import com.andrewproject.filechat.node.ChatNode;
 import com.andrewproject.filechat.node.MergeNode;
+import com.andrewproject.filechat.node.Neo4jSearchNode;
 import com.andrewproject.filechat.node.PromptTemplateNode;
 import com.andrewproject.filechat.node.VectorSearchNode;
 import com.andrewproject.filechat.service.ChatHistoryService;
+import com.andrewproject.filechat.service.DocumentGraphService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -35,6 +37,9 @@ public class ParallelGraphConfig {
     @Resource
     private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private DocumentGraphService documentGraphService;
+
     @Bean
     public StateGraph parallelStreamGraph(ChatClient.Builder chatClientBuilder, SelfMysqlChatMemoryRepository selfMysqlChatMemoryRepository) throws GraphStateException {
 
@@ -51,6 +56,7 @@ public class ParallelGraphConfig {
             keyStrategyHashMap.put(ChatNode.NODE_CONTENT, new ReplaceStrategy());
             keyStrategyHashMap.put(PromptTemplateNode.NODE_CONTENT, new ReplaceStrategy());
             keyStrategyHashMap.put(VectorSearchNode.NODE_CONTENT, new ReplaceStrategy());
+            keyStrategyHashMap.put(Neo4jSearchNode.NODE_CONTENT, new ReplaceStrategy());
             keyStrategyHashMap.put(MergeNode.NODE_CONTENT, new ReplaceStrategy());
 
             return keyStrategyHashMap;
@@ -61,13 +67,16 @@ public class ParallelGraphConfig {
                         chatClientBuilder, promptTemplate)))
                 .addNode(PromptTemplateNode.NODE_NAME, node_async(new PromptTemplateNode(promptTemplate)))
                 .addNode(VectorSearchNode.NODE_NAME, node_async(new VectorSearchNode()))
+                .addNode(Neo4jSearchNode.NODE_NAME, node_async(new Neo4jSearchNode(documentGraphService)))
                 .addNode(MergeNode.NODE_NAME, node_async(new MergeNode()))
 
                 .addEdge(START, PromptTemplateNode.NODE_NAME)
                 .addEdge(START, VectorSearchNode.NODE_NAME)
+                .addEdge(START, Neo4jSearchNode.NODE_NAME)
 
                 .addEdge(PromptTemplateNode.NODE_NAME, ChatNode.NODE_NAME)
                 .addEdge(VectorSearchNode.NODE_NAME, ChatNode.NODE_NAME)
+                .addEdge(Neo4jSearchNode.NODE_NAME, ChatNode.NODE_NAME)
 
                 .addEdge(ChatNode.NODE_NAME, MergeNode.NODE_NAME)
 

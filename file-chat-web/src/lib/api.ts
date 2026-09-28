@@ -44,6 +44,11 @@ export interface Passage {
   score: number | null
 }
 
+export interface RelatedWork {
+  title: string
+  authors: string[]
+}
+
 export interface UploadResult {
   conversationId: string
   fileName: string
@@ -55,6 +60,7 @@ export interface AnswerResult {
   answer: string
   sources: Passage[]
   prompt: string
+  related?: RelatedWork[]
 }
 
 export class ApiError extends Error {
@@ -194,6 +200,7 @@ export type StreamEvent =
   | { type: 'meta'; traceId: string; conversationId: string }
   | { type: 'sources'; sources: Passage[] }
   | { type: 'prompt'; prompt: string }
+  | { type: 'related'; related: RelatedWork[] }
   | { type: 'token'; text: string }
   | { type: 'done' }
   | { type: 'error'; message: string }
@@ -222,6 +229,9 @@ export async function streamAnswer(
         break
       case 'prompt':
         onEvent({ type: 'prompt', prompt: String(payload) })
+        break
+      case 'related':
+        onEvent({ type: 'related', related: payload as RelatedWork[] })
         break
       case 'token':
         onEvent({ type: 'token', text: String(payload.text ?? '') })
