@@ -3,6 +3,39 @@
 Chat with your PDFs. FileChat splits each uploaded PDF into passages, embeds them into Elasticsearch, and answers
 questions with Qwen (via DashScope), citing the passages each answer came from.
 
+![FileChat demo](docs/demo/demo.gif)
+
+<sub>34-second walkthrough of `file-chat-frontend`: sign in, upload a PDF, ask questions, inspect the cited passages and the Neo4j author recommendations, and reopen an earlier conversation. [Full quality MP4](docs/demo/demo.mp4)</sub>
+
+## Screenshots
+
+| Streamed answer with citations | Sources and Neo4j recommendations |
+| :-- | :-- |
+| ![Answer streaming in](docs/demo/05-streaming.png) | ![Sources panel and more by these authors](docs/demo/07-related-works.png) |
+| Answers stream in and link each claim to its source file. | The inspector shows the retrieved passages with match scores, and other ebooks by the same authors from Neo4j. |
+
+| Refuses when the document has no answer | Dark mode |
+| :-- | :-- |
+| ![Question the document cannot answer](docs/demo/09-not-found.png) | ![Dark theme](docs/demo/11-dark.png) |
+| Off-topic questions get "I cannot find that" instead of a guess. | Follows the system theme, with a manual switch. |
+
+<details>
+<summary>More: sign-in, upload, semantic search, history, mobile</summary>
+
+| Sign in | Upload | Ready to chat |
+| :-- | :-- | :-- |
+| ![Sign in](docs/demo/01-login.png) | ![Upload a PDF](docs/demo/02-home.png) | ![Suggested questions](docs/demo/04-ready.png) |
+
+| Passages for one answer | Search without asking | Earlier conversation |
+| :-- | :-- | :-- |
+| ![Sources](docs/demo/06-sources.png) | ![Search panel](docs/demo/08-search-panel.png) | ![History](docs/demo/10-history.png) |
+
+<img src="docs/demo/12-mobile.png" width="240" alt="Mobile layout">
+
+</details>
+
+> **How the media was made.** The pictures and video are the real `file-chat-frontend`, driven with Playwright against a small stand-in for the gateway, because MySQL, Elasticsearch, Neo4j and a DashScope key were not available. The answers, passages and the two Neo4j titles are canned and fictional (a made-up "Q3 research report"). They show what the client renders for each API response, not the quality of real retrieval or generation.
+
 ## Modules
 
 | Module                                       | Port | Role                                                                      |
