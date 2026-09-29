@@ -7,7 +7,7 @@ questions with Qwen (via DashScope), citing the passages each answer came from.
 
 | Module                                       | Port | Role                                                                      |
 | -------------------------------------------- | ---- | ------------------------------------------------------------------------- |
-| `file-chat-web`                              | 5173 | React web client                                                          |
+| `file-chat-frontend`                              | 5173 | React web client                                                          |
 | `file-chat-gateway`                          | 8080 | Gateway for the web client: `/system/**` → search service                 |
 | `file-chat-gateway-openapi`                  | 8100 | Signed API for other programs: `/chat/**` → search, `/upload/**` → upload |
 | `file-chat-service/file-chat-service-search` | 8081 | RAG chat graph (Spring AI Alibaba Graph), chat memory and history, users  |
@@ -68,7 +68,7 @@ history and chat memory (last 10 messages).
 4. Start the web client and open http://localhost:5173:
 
    ```sh
-   cd file-chat-web
+   cd file-chat-frontend
    npm install
    npm run dev
    ```
@@ -77,7 +77,7 @@ history and chat memory (last 10 messages).
 
 | Path | What it is |
 | :-- | :-- |
-| `file-chat-web/` | The web client. |
+| `file-chat-frontend/` | The web client. |
 | `deploy/` | `docker compose` for MySQL, Elasticsearch and Neo4j on 127.0.0.1: `docker compose --env-file .env -f deploy/docker-compose.yml up -d`. No default passwords; set them in `.env` (see `.env.example`). Seed the Neo4j catalog with `deploy/neo4j/seed.cypher`. |
 | `sql/` | MySQL schema for a manually managed database. |
 | `docs/media/` | Architecture diagram. |
