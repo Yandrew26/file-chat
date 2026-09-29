@@ -77,13 +77,10 @@ history and chat memory (last 10 messages).
 
 | Path | What it is |
 | :-- | :-- |
-| `file-chat-web/` | The current web client. Speaks the API in this README (multipart `create-chat`, typed SSE events). |
-| `deploy/` | `docker compose` for MySQL, Elasticsearch and Neo4j on 127.0.0.1. No default passwords: set them in `.env` (see `.env.example`). |
-| `demo/` | Terminal walkthrough and an offline LLM stub. **Written against the earlier API** (raw-body `create-chat`, per-node SSE frames); `demo.sh` and `sse_pretty.py` need updating before they work against this backend. |
-| `file-chat-frontend/` | Small dependency-free UI plus a credential-injecting dev proxy (loopback only). **Earlier API**, same caveat as `demo/`. |
-| `frontend/` | Demo UI with a mock gateway (`npm start`) and Playwright capture script; screenshots and video in `docs/demo/`. **Mocks the earlier API.** |
-
-The last three are kept for reference and are not exercised by the current backend.
+| `file-chat-web/` | The web client. |
+| `deploy/` | `docker compose` for MySQL, Elasticsearch and Neo4j on 127.0.0.1: `docker compose --env-file .env -f deploy/docker-compose.yml up -d`. No default passwords; set them in `.env` (see `.env.example`). Seed the Neo4j catalog with `deploy/neo4j/seed.cypher`. |
+| `sql/` | MySQL schema for a manually managed database. |
+| `docs/media/` | Architecture diagram. |
 
 ## Author recommendations (Neo4j)
 

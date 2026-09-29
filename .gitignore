@@ -51,3 +51,4 @@ node_modules/
 *.pid
 *.pem
 *.key
+.idea/
