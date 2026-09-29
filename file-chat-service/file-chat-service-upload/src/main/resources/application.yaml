@@ -1,5 +1,7 @@
 server:
   port: 8082
+  # Internal service: it has no authentication of its own (the gateway does that), so listen on loopback unless told otherwise
+  address: ${FILECHAT_BIND_ADDRESS:127.0.0.1}
   servlet:
     encoding:
       charset: UTF-8

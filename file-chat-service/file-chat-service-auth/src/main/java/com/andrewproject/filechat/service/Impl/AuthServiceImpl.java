@@ -45,11 +45,4 @@ public class AuthServiceImpl implements AuthService {
         return RespAuthVerifyParam.builder().verifyResult(Boolean.TRUE).build();
     }
 
-    public static void main(String[] args) {
-        String authVerifyStr = "authId=12345&secretKey=54321";
-        MessageDigest md5Digest = DigestUtils.getMd5Digest();
-        byte[] digest = md5Digest.digest(authVerifyStr.getBytes(StandardCharsets.UTF_8));
-        String m5dStr = Hex.encodeHexString(digest);
-        System.out.println(m5dStr);
-    }
 }

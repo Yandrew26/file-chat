@@ -138,7 +138,7 @@ const server = http.createServer(async (req, res) => {
         pageNo: pageNum, pageSize, total, pages: Math.ceil(total / pageSize) });
     }
 
-    if (req.method === 'POST' && p === '/upload/upload/pdf') {
+    if (req.method === 'POST' && p === '/upload/pdf') {
       let bytes = 0;
       for await (const c of req) bytes += c.length;
       await sleep(900); // pretend to chunk + embed
@@ -151,7 +151,7 @@ const server = http.createServer(async (req, res) => {
   // Static frontend
   const rel = p === '/' ? 'index.html' : p.slice(1);
   const file = path.join(ROOT, rel);
-  if (!file.startsWith(ROOT) || rel.startsWith('scripts') || rel.endsWith('.mjs')) { res.writeHead(404).end(); return; }
+  if (!file.startsWith(ROOT + path.sep) || rel.startsWith('scripts') || rel.endsWith('.mjs')) { res.writeHead(404).end(); return; }
   try {
     const data = await readFile(file);
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream' });
@@ -159,4 +159,4 @@ const server = http.createServer(async (req, res) => {
   } catch { res.writeHead(404).end('Not found'); }
 });
 
-server.listen(PORT, () => console.log(`FileChat demo (mock API) on http://localhost:${PORT}`));
+server.listen(PORT, '127.0.0.1', () => console.log(`FileChat demo (mock API) on http://localhost:${PORT}`));

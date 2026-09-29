@@ -49,11 +49,11 @@ authID:        <auth_id from rag_auth_base>
 authorization: md5("authId=<auth_id>&secretKey=<secret_key>")   # lowercase hex
 ```
 
-With no headers you get `401`. A bad signature or unknown client gets `403`. The demo client seeded by `deploy/mysql/init.sql` is `12345` / `54321`:
+With no headers you get `401`. A bad signature or unknown client gets `403`. No client is seeded by default. To create one for local use, put `FILECHAT_DEMO_AUTH_ID` and a long random `FILECHAT_DEMO_AUTH_SECRET` (for example `openssl rand -hex 24`) in `.env` before the first `docker compose up`; `deploy/mysql/02-demo-client.sh` inserts it. Then:
 
 ```bash
-SIG=$(printf 'authId=12345&secretKey=54321' | md5sum | cut -d' ' -f1)
-H=(-H "authID: 12345" -H "authorization: $SIG")
+SIG=$(printf 'authId=%s&secretKey=%s' "$FILECHAT_DEMO_AUTH_ID" "$FILECHAT_DEMO_AUTH_SECRET" | md5sum | cut -d' ' -f1)
+H=(-H "authID: $FILECHAT_DEMO_AUTH_ID" -H "authorization: $SIG")
 ```
 
 | Method | Path (via :8100) | What it does |
@@ -64,8 +64,8 @@ H=(-H "authID: 12345" -H "authorization: $SIG")
 | `GET` | `/chat/rag?conversationId=&message=` | Older single-call RAG without the graph or Neo4j. |
 | `GET` | `/chat/history/getByConversationId?conversationId=` | Full transcript of one conversation. |
 | `GET` | `/chat/history/pages?pageNum=&pageSize=&userId=[&dateStart=&dateEnd=]` | A user's conversations, newest first, each shown by its first message. |
-| `POST` + PDF body | `/upload/upload/pdf?conversationId=` | Indexes a PDF into an existing conversation. |
-| `GET` | `/upload/upload/search?query=&conversationId=` | Top-k chunks with similarity scores. |
+| `POST` + PDF body | `/upload/pdf?conversationId=` | Indexes a PDF into an existing conversation. |
+| `GET` | `/upload/search?query=&conversationId=` | Top-k chunks with similarity scores. |
 
 Example:
 
@@ -84,16 +84,20 @@ curl -N "${H[@]}" --get --data-urlencode "conversationId=$CID" \
 **Requirements:** JDK 17+, Maven 3.9+, Docker, and Python 3 (only for the demo helpers).
 
 ```bash
-# 1. MySQL (schema + demo data), Elasticsearch 8 and Neo4j 5
-docker compose -f deploy/docker-compose.yml up -d --wait
-docker compose -f deploy/docker-compose.yml exec -T neo4j \
-  cypher-shell -u neo4j -p filechat123 < deploy/neo4j/seed.cypher
+# 0. Configuration: copy the template and fill in the passwords (and the demo client, see above)
+cp .env.example .env
+
+# 1. MySQL (schema), Elasticsearch 8 and Neo4j 5, bound to 127.0.0.1
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --wait
+set -a; source .env; set +a
+docker compose --env-file .env -f deploy/docker-compose.yml exec -T neo4j \
+  cypher-shell -u neo4j -p "$NEO4J_PASSWORD" < deploy/neo4j/seed.cypher
 
 # 2. Build the five executable jars
 mvn -DskipTests package
 
 # 3a. Start everything against Qwen (DashScope key)
-export API_KEY=sk-...
+# API_KEY is read from .env
 demo/start-services.sh
 
 # 3b. ...or fully offline with the LLM stub (no key needed)
@@ -113,9 +117,9 @@ Logs are written to `logs/<service>.log`. To run a single service from your IDE 
 | Variable | Used by | Meaning |
 |---|---|---|
 | `API_KEY` | search, upload | DashScope API key, used for Qwen chat and embeddings. |
-| `MySQL_PASSWORD` | search, auth | MySQL `root` password (`filechat` in the compose file). |
-| `NEO4J_PASSWORD` | search | Neo4j `neo4j` password (`filechat123` in the compose file). |
-| `SPRING_ELASTICSEARCH_PASSWORD` | upload | Elasticsearch `elastic` password (`filechat` in the compose file). |
+| `MySQL_PASSWORD` | search, auth | MySQL `root` password. Set in `.env`; compose and the services read the same value. |
+| `NEO4J_PASSWORD` | search | Neo4j `neo4j` password. Set in `.env`. |
+| `ELASTICSEARCH_PASSWORD` | upload | Elasticsearch `elastic` password. Set in `.env`. |
 | `SPRING_AI_OPENAI_BASE_URL`, `SPRING_AI_DASHSCOPE_BASE_URL` | search, upload | Override the model endpoints. `--stub` points both at `localhost:8090`. |
 
 Other Spring properties can be overridden the same way (for example `SPRING_DATASOURCE_URL`).

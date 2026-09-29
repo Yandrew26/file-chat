@@ -44,3 +44,10 @@ build/
 ### Local runs ###
 logs/
 __pycache__/
+
+### Local artefacts ###
+node_modules/
+.recordings/
+*.pid
+*.pem
+*.key

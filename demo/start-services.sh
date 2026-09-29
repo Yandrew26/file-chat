@@ -16,13 +16,14 @@ if [[ "${1:-}" == "--stop" ]]; then
   echo "stopped"; exit 0
 fi
 
-# Credentials matching deploy/docker-compose.yml (override as needed).
-export MySQL_PASSWORD=${MySQL_PASSWORD:-filechat}
-export NEO4J_PASSWORD=${NEO4J_PASSWORD:-filechat123}
-export SPRING_ELASTICSEARCH_PASSWORD=${SPRING_ELASTICSEARCH_PASSWORD:-filechat}
+# Passwords come from .env (see .env.example); they must match the ones deploy/docker-compose.yml was started with.
+[[ -f .env ]] && { set -a; source .env; set +a; }
+: "${MySQL_PASSWORD:?Set MySQL_PASSWORD in .env}" "${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in .env}" \
+  "${ELASTICSEARCH_PASSWORD:?Set ELASTICSEARCH_PASSWORD in .env}"
+export MySQL_PASSWORD NEO4J_PASSWORD ELASTICSEARCH_PASSWORD
 
 if [[ "${1:-}" == "--stub" ]]; then
-  export API_KEY=${API_KEY:-offline-stub}
+  export API_KEY=${API_KEY:-offline-stub}   # placeholder, not a real key: the stub ignores it
   export SPRING_AI_OPENAI_BASE_URL=http://localhost:8090/compatible-mode
   export SPRING_AI_DASHSCOPE_BASE_URL=http://localhost:8090/
   python3 demo/llm-stub/llm_stub.py 8090 > logs/llm-stub.log 2>&1 &

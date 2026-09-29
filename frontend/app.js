@@ -1,5 +1,5 @@
 // FileChat demo UI. Talks to the gateway endpoints:
-//   POST /upload/upload/pdf?conversationId=        upload + index a PDF
+//   POST /upload/pdf?conversationId=        upload + index a PDF
 //   GET  /chat/graph/rag/stream?message&conversationId   SSE answer stream
 //   GET  /chat/history/pages | /chat/history/getByConversationId
 const $ = (id) => document.getElementById(id);
@@ -132,7 +132,7 @@ async function upload(file, label = file.name) {
   const id = newConversationId();
   el.status.className = 'status'; el.status.innerHTML = `<span class="spinner"></span>Indexing ${esc(label)}…`;
   try {
-    await api(`/upload/upload/pdf?${q({ conversationId: id })}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: await file.arrayBuffer() });
+    await api(`/upload/pdf?${q({ conversationId: id })}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: await file.arrayBuffer() });
   } catch (e) { el.status.className = 'status err'; el.status.textContent = friendly(e); return; }
   docNames[id] = label; store.set('filechat.docNames', docNames);
   showChat(id, label, true); setSuggestions(true);

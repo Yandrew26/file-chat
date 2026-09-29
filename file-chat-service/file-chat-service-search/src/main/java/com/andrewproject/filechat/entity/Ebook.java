@@ -26,6 +26,5 @@ public class Ebook {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @Relationship(type = "WROTE", direction = Relationship.Direction.INCOMING)
-    @JsonIgnoreProperties("ebook")
     private List<Author> author;
 }

@@ -5,8 +5,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 GW=${GW:-http://localhost:8100}
-AUTH_ID=${AUTH_ID:-12345}
-SECRET=${SECRET:-54321}
+# Credentials of a gateway API client (see .env.example: FILECHAT_DEMO_AUTH_ID / FILECHAT_DEMO_AUTH_SECRET)
+[[ -f .env ]] && { set -a; source .env; set +a; }
+AUTH_ID=${AUTH_ID:-${FILECHAT_DEMO_AUTH_ID:?Set FILECHAT_DEMO_AUTH_ID in .env (or AUTH_ID)}}
+SECRET=${SECRET:-${FILECHAT_DEMO_AUTH_SECRET:?Set FILECHAT_DEMO_AUTH_SECRET in .env (or SECRET)}}
 USER_ID=${USER_ID:-12345678}
 PAUSE=${PAUSE:-1.2}
 

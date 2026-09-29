@@ -61,7 +61,7 @@ The mock mirrors these contracts from the backend code:
 | `GET /chat/graph/rag/stream?message&conversationId` | search `ChatGraphController` | Server-sent events, frames like `{"rag_chat":"<chunk>"}` |
 | `GET /chat/history/pages?pageNum&pageSize&userId` | search `ChatHistoryController` | Paged conversations for the sidebar |
 | `GET /chat/history/getByConversationId` | search `ChatHistoryController` | Rows have `type` `USER` / `ASSISTANT` |
-| `POST /upload/upload/pdf?conversationId` | upload `UploadController` | Raw PDF bytes as the body |
+| `POST /upload/pdf?conversationId` | upload `UploadController` | Raw PDF bytes as the body |
 | all of the above | `AuthGatewayFilter` | Needs `authorization` + `authID` headers: missing → 401, rejected → 403 |
 
 Conversation ids follow the backend's `<userId>_<uuid>` format; the search service splits on `_` to find the user.

@@ -38,7 +38,8 @@ history and chat memory (last 10 messages).
 
 ## Running locally
 
-1. Create the database and tables (this also seeds user `12345678` and API credentials `12345` / `54321`):
+1. Create the database and tables (this seeds user `12345678`; no API client is created, see the note in `sql/schema.sql`
+   for adding your own with a long random secret):
 
    ```sh
    mysql -uroot -p < sql/schema.sql
@@ -71,6 +72,18 @@ history and chat memory (last 10 messages).
    npm install
    npm run dev
    ```
+
+## Other directories
+
+| Path | What it is |
+| :-- | :-- |
+| `file-chat-web/` | The current web client. Speaks the API in this README (multipart `create-chat`, typed SSE events). |
+| `deploy/` | `docker compose` for MySQL, Elasticsearch and Neo4j on 127.0.0.1. No default passwords: set them in `.env` (see `.env.example`). |
+| `demo/` | Terminal walkthrough and an offline LLM stub. **Written against the earlier API** (raw-body `create-chat`, per-node SSE frames); `demo.sh` and `sse_pretty.py` need updating before they work against this backend. |
+| `file-chat-frontend/` | Small dependency-free UI plus a credential-injecting dev proxy (loopback only). **Earlier API**, same caveat as `demo/`. |
+| `frontend/` | Demo UI with a mock gateway (`npm start`) and Playwright capture script; screenshots and video in `docs/demo/`. **Mocks the earlier API.** |
+
+The last three are kept for reference and are not exercised by the current backend.
 
 ## Author recommendations (Neo4j)
 

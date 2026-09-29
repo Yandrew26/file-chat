@@ -13,6 +13,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 5173);
+// Loopback only: this proxy adds the gateway credentials to every request it forwards.
+const HOST = process.env.HOST || '127.0.0.1';
 const GATEWAY = new URL(process.env.GATEWAY_URL || 'http://localhost:8100');
 const AUTH_ID = process.env.AUTH_ID || '';
 const AUTH_SECRET = process.env.AUTH_SECRET || '';
@@ -37,7 +39,7 @@ const TYPES = {
 function serveStatic(req, res) {
   const urlPath = new URL(req.url, 'http://x').pathname;
   const file = path.normalize(path.join(PUBLIC_DIR, urlPath === '/' ? 'index.html' : urlPath));
-  if (!file.startsWith(PUBLIC_DIR)) {
+  if (file !== PUBLIC_DIR && !file.startsWith(PUBLIC_DIR + path.sep)) {
     res.writeHead(403).end();
     return;
   }
@@ -75,4 +77,4 @@ function proxy(req, res) {
 
 http
   .createServer((req, res) => (req.url.startsWith('/api/') ? proxy(req, res) : serveStatic(req, res)))
-  .listen(PORT, () => console.log(`File Chat UI on http://localhost:${PORT}  ->  ${GATEWAY.origin}`));
+  .listen(PORT, HOST, () => console.log(`File Chat UI on http://${HOST}:${PORT}  ->  ${GATEWAY.origin}`));

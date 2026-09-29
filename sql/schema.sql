@@ -41,4 +41,5 @@ CREATE TABLE IF NOT EXISTS rag_auth_base (
 
 -- Local development seed data
 INSERT IGNORE INTO system_user (id, user_id, user_name, email) VALUES (1, '12345678', 'Andrew', NULL);
-INSERT IGNORE INTO rag_auth_base (auth_name, auth_id, secret_key) VALUES ('local-dev', '12345', '54321');
+-- Create your own gateway API client; never commit a real id/secret. Use a long random secret, e.g. `openssl rand -hex 24`:
+-- INSERT INTO rag_auth_base (auth_name, auth_id, secret_key) VALUES ('my-client', '<auth id>', '<long random secret>');

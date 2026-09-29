@@ -40,5 +40,6 @@ CREATE TABLE IF NOT EXISTS rag_auth_base (
 INSERT IGNORE INTO system_user (id, user_id, user_name, email) VALUES
     (1, '12345678', 'Andrew', 'demo@example.com');
 
-INSERT IGNORE INTO rag_auth_base (auth_name, auth_id, secret_key, enabled_status) VALUES
-    ('demo-client', '12345', '54321', 1);
+-- No API client is created here on purpose: a fixed id/secret in a public repository would be a working
+-- credential for anyone who finds it. To create one for local use, set FILECHAT_DEMO_AUTH_ID and
+-- FILECHAT_DEMO_AUTH_SECRET in .env before the first start (see 02-demo-client.sh).
