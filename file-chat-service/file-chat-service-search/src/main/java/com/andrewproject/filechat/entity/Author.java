@@ -27,5 +27,6 @@ public class Author {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @Relationship(type = "WROTE", direction = Relationship.Direction.OUTGOING)
+    @JsonIgnoreProperties("author") // Ebook.author points back here; without this the JSON never terminates
     private List<Ebook> ebook;
 }

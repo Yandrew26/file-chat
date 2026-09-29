@@ -2,6 +2,7 @@ package com.andrewproject.filechat.config;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorSimilarity;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -92,7 +93,9 @@ public class SelfElasticsearchVectorStore extends SelfAbstractObservationVectorS
         if (!this.indexExists()) {
             throw new IllegalArgumentException("Index not found");
         } else {
-            BulkRequest.Builder bulkRequestBuilder = new BulkRequest.Builder();
+            BulkRequest.Builder bulkRequestBuilder = new BulkRequest.Builder()
+                    // return only once the chunks are searchable, otherwise a question asked right after the upload can miss them
+                    .refresh(Refresh.WaitFor);
             List<float[]> embeddings = this.embeddingModel.embed(documents, EmbeddingOptions.builder().build(), this.batchingStrategy);
 
             for(int i = 0; i < embeddings.size(); ++i) {

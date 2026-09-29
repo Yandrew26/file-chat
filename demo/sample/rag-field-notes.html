@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{font-family:Georgia,serif;margin:48px 64px;color:#222;line-height:1.5;font-size:12.5pt}
+h1{font-size:22pt;margin-bottom:4px} .by{color:#555;margin-top:0} h2{font-size:14pt;margin-top:22px}
+</style></head><body>
+<h1>Field Notes on Retrieval-Augmented Generation</h1>
+<p class="by">by Ada Park and Leo Marsh</p>
+
+<h2>Why retrieval?</h2>
+<p>Large language models are frozen at training time and cannot see private files. Retrieval-augmented generation (RAG) fixes this by fetching relevant passages from your own documents at question time and placing them in the prompt. The model then answers from those passages instead of from memory, which sharply reduces hallucination.</p>
+
+<h2>How big should chunks be?</h2>
+<p>Documents are split into chunks before indexing. We recommend chunks of roughly 800 to 1,000 tokens with a small overlap, because chunks that are too small lose context while chunks that are too large dilute the embedding. Page boundaries are a reasonable first split for PDF files.</p>
+
+<h2>How does vector search work?</h2>
+<p>Each chunk is converted into an embedding vector and stored in a vector database such as Elasticsearch. At query time the question is embedded with the same model and a k-nearest-neighbour search returns the top five most similar chunks using cosine similarity. Filtering by conversation keeps one user's files isolated from another's.</p>
+
+<h2>What does memory add?</h2>
+<p>A chat window memory keeps the last ten messages of each conversation so that follow-up questions such as "and what about the second point?" can be resolved. Long-term history is stored separately in a relational database for auditing and for listing past conversations.</p>
+
+<h2>Why add a knowledge graph?</h2>
+<p>A knowledge graph complements vector search. Storing authors and the books they wrote in a graph database such as Neo4j lets the assistant recommend other works by the same authors, something pure similarity search cannot do.</p>
+
+<h2>How should we evaluate it?</h2>
+<p>The single most useful metric is groundedness: every claim in an answer should be traceable to a cited source passage. Teams should keep a small, fixed set of questions with known answers and re-run it after every change to chunking, embeddings or prompts.</p>
+</body></html>

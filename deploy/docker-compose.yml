@@ -1,0 +1,51 @@
+# Local infrastructure for FileChat: MySQL, Elasticsearch and Neo4j.
+#   docker compose -f deploy/docker-compose.yml up -d
+# Passwords here are for local development only.
+name: filechat
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: filechat
+      MYSQL_DATABASE: file_chat_db
+    ports: ["3306:3306"]
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-pfilechat"]
+      interval: 5s
+      retries: 30
+
+  elasticsearch:
+    image: elasticsearch:8.18.0
+    environment:
+      discovery.type: single-node
+      ELASTIC_PASSWORD: filechat
+      xpack.security.http.ssl.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    ports: ["9200:9200"]
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:filechat localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 5s
+      retries: 60
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/filechat123
+    ports: ["7474:7474", "7687:7687"]
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p filechat123 'RETURN 1'"]
+      interval: 5s
+      retries: 30
+
+volumes:
+  mysql-data:
+  es-data:
+  neo4j-data:

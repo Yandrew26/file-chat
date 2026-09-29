@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FileChat</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M9 8h9l5 5v11H9z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Conversations">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <span class="brand-name">FileChat</span>
+      </div>
+      <button class="btn primary block" id="newChat">+ New chat</button>
+      <div class="side-label">Recent</div>
+      <nav class="conv-list" id="convList" aria-label="Recent conversations"></nav>
+      <div class="side-foot">
+        <button class="btn ghost" id="openSettings">Connection</button>
+        <button class="btn ghost icon" id="toggleTheme" aria-label="Toggle dark mode" title="Toggle dark mode">◐</button>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="btn ghost icon menu" id="openMenu" aria-label="Open conversations">☰</button>
+        <div class="doc" id="docTitle">
+          <span class="doc-title">New chat</span>
+        </div>
+        <span class="pill" id="connPill" title="Where requests are sent"></span>
+      </header>
+
+      <section class="empty" id="empty">
+        <div class="empty-inner">
+          <h1>Chat with your documents</h1>
+          <p class="lede">Upload a PDF and ask questions. Answers are grounded in the file and cite their sources.</p>
+          <label class="drop" id="drop" tabindex="0">
+            <input type="file" id="fileInput" accept="application/pdf,.pdf" hidden>
+            <span class="drop-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+            </span>
+            <span class="drop-title">Drop a PDF here, or click to browse</span>
+            <span class="drop-sub">The file is chunked, embedded and indexed for this conversation only</span>
+          </label>
+          <div class="or">or</div>
+          <button class="btn" id="trySample">Try the sample report</button>
+          <p class="status" id="uploadStatus" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="chat" id="chat" hidden>
+        <div class="messages" id="messages" aria-live="polite"></div>
+        <div class="composer-wrap">
+          <div class="suggestions" id="suggestions"></div>
+          <form class="composer" id="composer">
+            <textarea id="input" rows="1" placeholder="Ask about the document…" aria-label="Message"></textarea>
+            <button class="btn primary send" id="send" type="submit" aria-label="Send">Send</button>
+            <button class="btn stop" id="stop" type="button" hidden>Stop</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="settings">
+    <form method="dialog" class="dlg" id="settingsForm">
+      <h2>Connection</h2>
+      <p class="hint">Requests go to the gateway (<code>file-chat-gateway-openapi</code>, port 8100) and carry the <code>authorization</code> and <code>authID</code> headers it checks.</p>
+      <label>API base URL<input id="setBase" placeholder="(same origin — mock server)" autocomplete="off"></label>
+      <label>authID<input id="setAuthId" autocomplete="off"></label>
+      <label>authorization<input id="setToken" autocomplete="off"></label>
+      <label>User ID<input id="setUser" autocomplete="off"></label>
+      <p class="hint">Tip: set the token to <code>invalid</code> to see how a rejected token (403) looks.</p>
+      <div class="dlg-actions">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" value="save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="alert" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

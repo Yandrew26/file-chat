@@ -89,7 +89,9 @@ public class ChatController {
         String elasticsearchList = getElasticsearchList(message, conversationId);
         Message systemMessage = systemPromptTemplate.createMessage(Map.of("name", "filechat",
                 "voice", "friendly assistant",
-                "elasticsearch_results", elasticsearchList));
+                "elasticsearch_results", elasticsearchList,
+                // this endpoint has no Neo4j step, but the shared template requires the variable
+                "neo4j_results", ""));
 
         log.info("Elasticsearch results: {}", elasticsearchList);
 

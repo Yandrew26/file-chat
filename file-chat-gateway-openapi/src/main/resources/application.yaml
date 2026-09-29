@@ -54,5 +54,5 @@ spring:
               predicates:
                 - Path=/upload/**
               filters:
-                - StripPrefix=1
+                # the upload service itself is mounted under /upload, so the prefix must be kept
                 - AuthFilter
